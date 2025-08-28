@@ -67,8 +67,8 @@
      ca_cert_path: str?
      client_cert_path: str?
      client_key_path: str?
-     username: str??
-     password: str??
+     username: str?
+     password: str?
      keepalive: int
      clean_session: bool
      client_id: str?
