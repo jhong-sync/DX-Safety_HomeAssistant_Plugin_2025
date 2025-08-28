@@ -71,7 +71,7 @@
      password: str??
      keepalive: int
      clean_session: bool
-    client_id: str?
+     client_id: str?
    local_mqtt:
      host: str
      port: int
