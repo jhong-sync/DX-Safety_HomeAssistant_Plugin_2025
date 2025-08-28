@@ -1,0 +1,100 @@
+ name: DX-Safety CAP Ingestor
+ version: "0.1.0"
+ slug: dx_safety
+ description: CAP 기반 재난 경보 수신/정규화/정책판정/디스패치 애드온
+ arch:
+   - amd64
+   - aarch64
+ startup: services
+ init: false
+ ingress: true
+ ingress_port: 8099
+ ingress_entry: /
+ map:
+   - "share:rw"
+ services:
+   - "mqtt:need"
+ options:
+   remote_mqtt:
+     host: "broker.example.com"
+     port: 8883
+     topic: "pws/cap/#"
+     qos: 1
+     tls: true
+     ca_cert_path: "/data/certs/ca.crt"
+     client_cert_path: null
+     client_key_path: null
+     username: null
+     password: null
+     keepalive: 30
+     clean_session: false
+   local_mqtt:
+     host: "core-mosquitto"
+     port: 1883
+     topic_prefix: "dxsafety"
+     qos: 1
+     retain: true
+   homeassistant_api:
+     token: null                 
+     url: "http://homeassistant:8123"
+     timeout: 30
+   policy:
+     default_location: "zone.home"
+     lat: null
+     lon: null
+     radius_km_buffer: 0
+     severity_threshold: "moderate"
+     night_mode: false
+   tts:
+     enabled: false
+     topic: "dxsafety/tts"
+     template: "{headline} - {description}"
+   observability:
+     http_port: 8099
+     metrics_enabled: true
+     log_level: "INFO"
+   reliability:
+     idempotency_ttl_sec: 86400
+     reconnect_max_backoff_sec: 120
+ schema:
+   remote_mqtt:
+     host: str
+     port: int
+     topic: str
+     qos: int
+     tls: bool
+     ca_cert_path: str?
+     client_cert_path: str?
+     client_key_path: str?
+     username: str?
+     password: str?
+     keepalive: int
+     clean_session: bool
+   local_mqtt:
+     host: str
+     port: int
+     topic_prefix: str
+     qos: int
+     retain: bool
+   homeassistant_api:
+     token: str?
+     url: str
+     timeout: int
+   policy:
+     default_location: str
+     lat: float?
+     lon: float?
+     radius_km_buffer: float
+     severity_threshold: list(minor|moderate|severe|critical)
+     night_mode: bool
+   tts:
+     enabled: bool
+     topic: str
+     template: str
+   observability:
+     http_port: int
+     metrics_enabled: bool
+     log_level: str
+   reliability:
+     idempotency_ttl_sec: int
+     reconnect_max_backoff_sec: int
