@@ -1,69 +1,141 @@
 import asyncio
 import ssl
-import time
+import socket, uuid, os, logging, traceback
 import paho.mqtt.client as mqtt
-import socket, uuid
+from app.observability.logger import get_logger
 
 def _make_client_id(prefix="dxsafety") -> str:
     base = f"{prefix}-{socket.gethostname()}-{uuid.uuid4().hex[:6]}"
     return base[:23]
 
-from app.observability.logger import get_logger
-
 log = get_logger()
+paho_log = logging.getLogger("paho")
+paho_log.setLevel(logging.DEBUG if os.getenv("LOG_LEVEL","INFO").upper()=="DEBUG" else logging.WARNING)
 
 class MqttIngestor:
-    def __init__(self, cfg, on_message, metrics):
+    def __init__(self, cfg, on_message, metrics, loop: asyncio.AbstractEventLoop | None = None):
         self.cfg = cfg
         self.on_message_cb = on_message
         self.metrics = metrics
-        client_id = getattr(cfg, "client_id", "") or ""
+        self.loop = loop or asyncio.get_event_loop()
+
+        # --- 설정 요약 로그 (민감정보 제외) ---
+        mode = getattr(cfg, "security_mode", "none")
+        log.info({
+            "msg": "mqtt_config",
+            "host": getattr(cfg,"host",""),
+            "port": getattr(cfg,"port",0),
+            "mode": mode,
+            "username_present": bool(getattr(cfg,"username","")),
+            "clean_session": getattr(cfg,"clean_session", True)
+        })
+
+        # --- client_id 생성 ---
+        client_id = (getattr(cfg, "client_id", "") or "").strip()
         if (not cfg.clean_session) and not client_id:
             client_id = _make_client_id()
-        self.client = mqtt.Client(client_id=client_id or None, clean_session=cfg.clean_session)
-        if cfg.tls:
+
+        try:
+            self.client = mqtt.Client(
+                client_id=client_id or None,
+                clean_session=cfg.clean_session
+            )
+        except Exception as e:
+            log.exception({"msg": "mqtt_client_init_error", "error": str(e)})
+            raise
+
+        # --- TLS 분기: security_mode 기준 ---
+        if mode in ("tls", "mtls"):
+            ca = getattr(cfg, "ca_cert_path", "") or ""
+            crt = getattr(cfg, "client_cert_path", "") or ""
+            key = getattr(cfg, "client_key_path", "") or ""
+            if not ca or not os.path.exists(ca):
+                log.error({"msg": "ca_missing_or_invalid", "path": ca})
+            if mode == "mtls":
+                if not crt or not os.path.exists(crt):
+                    log.error({"msg": "client_cert_missing_or_invalid", "path": crt})
+                if not key or not os.path.exists(key):
+                    log.error({"msg": "client_key_missing_or_invalid", "path": key})
+
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-            if cfg.ca_cert_path:
-                ctx.load_verify_locations(cafile=cfg.ca_cert_path)
-            if cfg.client_cert_path and cfg.client_key_path:
-                ctx.load_cert_chain(certfile=cfg.client_cert_path, keyfile=cfg.client_key_path)
+            if ca:  ctx.load_verify_locations(cafile=ca)
+            if mode == "mtls" and crt and key:
+                ctx.load_cert_chain(certfile=crt, keyfile=key)
             self.client.tls_set_context(ctx)
-        if cfg.username and cfg.password:
-            self.client.username_pw_set(cfg.username, cfg.password)
+
+        # --- 사용자 인증 ---
+        if getattr(cfg, "username", ""):
+            self.client.username_pw_set(cfg.username, getattr(cfg, "password", ""))
+
         self.client.on_connect = self._on_connect
         self.client.on_message = self._on_message
         self.client.on_disconnect = self._on_disconnect
         self.client.will_set("dxsafety/status", payload="offline", qos=1, retain=True)
 
     def _on_connect(self, client, userdata, flags, rc):
-        log.info({"msg": "ingestor_connected", "rc": rc})
-        client.subscribe(self.cfg.topic, qos=self.cfg.qos)
-        client.publish("dxsafety/status", payload="online", qos=1, retain=True)
+        if rc == 0:
+            log.info({"msg": "ingestor_connected", "rc": rc})
+            client.subscribe(self.cfg.topic, qos=self.cfg.qos)
+            client.publish("dxsafety/status", payload="online", qos=1, retain=True)
+        else:
+            log.error({"msg": "ingestor_connect_failed", "rc": rc})
 
     def _on_disconnect(self, client, userdata, rc):
         log.info({"msg": "ingestor_disconnected", "rc": rc})
-        self.metrics.ingestor_reconnects_total.inc()
+        try:
+            self.metrics.ingestor_reconnects_total.inc()
+        except Exception:
+            pass
 
     def _on_message(self, client, userdata, message):
         try:
-            asyncio.run_coroutine_threadsafe(
+            fut = asyncio.run_coroutine_threadsafe(
                 self.on_message_cb(message.payload, message.topic),
-                asyncio.get_event_loop()
+                self.loop
             )
-        except RuntimeError:
-            # fallback: 직접 호출 (동기)
-            asyncio.get_event_loop().create_task(self.on_message_cb(message.payload, message.topic))
+        except Exception as e:
+            log.exception({"msg":"ingestor_on_message_error", "error": str(e)})
 
     async def run(self):
         backoff = 1
         while True:
             try:
+                # 포트/모드 불일치 경고
+                mode = getattr(self.cfg, "security_mode", "none")
+                if (mode == "none" and self.cfg.port == 8883) or (mode in ("tls","mtls") and self.cfg.port == 1883):
+                    log.warning({"msg":"mqtt_port_mode_mismatch","mode":mode,"port":self.cfg.port})
+
+                # TCP 프리플라이트 (빠르게 원인 파악)
+                try:
+                    sock = socket.create_connection((self.cfg.host, self.cfg.port), timeout=5)
+                    sock.close()
+                except Exception as e:
+                    log.error({"msg":"mqtt_tcp_unreachable","host":self.cfg.host,"port":self.cfg.port,"error":str(e)})
+                    raise
+
+                # 접속
                 self.client.connect(self.cfg.host, self.cfg.port, keepalive=self.cfg.keepalive)
                 self.client.loop_start()
+
+                # 메인 루프
                 while True:
                     await asyncio.sleep(1)
+
             except Exception as e:
-                log.exception("ingestor_error", extra={"err": str(e)})
-                self.client.loop_stop()
-                await asyncio.sleep(min(backoff, self.cfg.reliability.reconnect_max_backoff_sec) if hasattr(self.cfg, 'reliability') else backoff)
+                log.exception({
+                    "msg":"ingestor_error",
+                    "host": getattr(self.cfg,"host",""),
+                    "port": getattr(self.cfg,"port",0),
+                    "mode": getattr(self.cfg,"security_mode",""),
+                    "topic": getattr(self.cfg,"topic",""),
+                    "error": str(e)
+                })
+                # 재시도
+                try:
+                    self.client.loop_stop()
+                except Exception:
+                    pass
+                # 지수 백오프
+                delay = min(backoff, getattr(getattr(self.cfg,"reliability", None), "reconnect_max_backoff_sec", 120))
+                await asyncio.sleep(delay)
                 backoff = min(backoff * 2, 120)
