@@ -34,13 +34,12 @@ COPY app /opt/app/app
 COPY run.sh /opt/app/run.sh
 
 # 권한
-RUN chmod +x /opt/app/run.sh \
- && chown -R appuser:appuser /opt/app /opt/venv
+RUN chmod +x /opt/app/run.sh
 
 # Ingress만 쓸 거면 EXPOSE 불필요(있어도 무해)
 # EXPOSE 8099
 
-USER appuser
+# USER root   # 루트 그대로 실행
 
 # 읽기전용 루트는 Supervisor가 관리 / data는 rw
 CMD ["/opt/app/run.sh"]
