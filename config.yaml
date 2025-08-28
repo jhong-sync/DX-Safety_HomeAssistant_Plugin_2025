@@ -12,6 +12,7 @@
  ingress_entry: /
  map:
    - "share:rw"
+   - "ssl:ro"
  services:
    - "mqtt:need"
  options:
@@ -20,10 +21,10 @@
      port: 8883
      topic: "pws/cap/#"
      qos: 1
-     tls: true
-     ca_cert_path: "/data/certs/ca.crt"
-     client_cert_path: null
-     client_key_path: null
+     security_mode: "tls"        # none | tls | mtls
+     ca_cert_path: "/ssl/ca.crt"
+     client_cert_path: ""
+     client_key_path: ""
      username: null
      password: null
      keepalive: 30
@@ -62,7 +63,7 @@
      port: int
      topic: str
      qos: int
-     tls: bool
+     security_mode: list(none|tls|mtls)
      ca_cert_path: str?
      client_cert_path: str?
      client_key_path: str?
