@@ -2,6 +2,12 @@ import asyncio
 import ssl
 import time
 import paho.mqtt.client as mqtt
+import socket, uuid
+
+def _make_client_id(prefix="dxsafety") -> str:
+    base = f"{prefix}-{socket.gethostname()}-{uuid.uuid4().hex[:6]}"
+    return base[:23]
+
 from app.observability.logger import get_logger
 
 log = get_logger()
@@ -11,7 +17,10 @@ class MqttIngestor:
         self.cfg = cfg
         self.on_message_cb = on_message
         self.metrics = metrics
-        self.client = mqtt.Client(clean_session=cfg.clean_session)
+        client_id = getattr(cfg, "client_id", "") or ""
+        if (not cfg.clean_session) and not client_id:
+            client_id = _make_client_id()
+        self.client = mqtt.Client(client_id=client_id or None, clean_session=cfg.clean_session)
         if cfg.tls:
             ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             if cfg.ca_cert_path:

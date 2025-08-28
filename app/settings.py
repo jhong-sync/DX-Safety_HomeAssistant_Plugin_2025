@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+import os
 import json, os
 
 class RemoteMqtt(BaseModel):
@@ -63,6 +64,7 @@ class Settings(BaseModel):
     def load():
         # Supervisor가 제공하는 옵션은 /data/options.json 에 존재
         path = "/data/options.json"
+        path = path or os.getenv("HA_OPTIONS_PATH", "/data/options.json")
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
         return Settings(**data)
