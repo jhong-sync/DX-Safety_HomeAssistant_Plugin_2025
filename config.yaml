@@ -1,5 +1,5 @@
 name: DX-Safety CAP Ingestor
-version: "0.1.11"
+version: "0.1.12"
 slug: dx_safety
 description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
 arch:
@@ -38,9 +38,9 @@ options:
     clean_session: true
     client_id: ""                 # 비우면 코드가 자동 생성(지속 세션 필요시 지정)
   local_mqtt:
-    host: "core-mosquitto"
+    host: "127.0.0.1"
     port: 1883
-    topic_prefix: "dxsafety"
+    topic_prefix: ""
     qos: 1
     retain: true
   homeassistant_api:
