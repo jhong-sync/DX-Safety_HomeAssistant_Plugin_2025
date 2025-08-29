@@ -134,8 +134,8 @@ async def main():
                 return
             # Dispatch
             await local_pub.publish_alert(cae, decision)
-            await ha_client.trigger(decision)
-            await tts.maybe_say(cae, decision)
+            # await ha_client.trigger(decision)
+            # await tts.maybe_say(cae, decision)
             
             # DX-Safety 상태 센서 업데이트
             await update_dxsafety_sensors(ha_client, cae, decision)
