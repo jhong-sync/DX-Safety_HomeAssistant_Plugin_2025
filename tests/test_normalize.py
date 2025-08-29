@@ -8,6 +8,7 @@ def test_cae_validation_ok():
         "sent": "2025-08-26T12:00:00Z",
         "headline": "지진 속보",
         "severity": "severe",
+        "expiresAt": "2025-08-26T18:00:00Z",
         "areas": [{"geometry": {"type": "Point", "coordinates": [126.9780, 37.5665]}}]
     }).encode("utf-8")
     cae = n.to_cae(raw)

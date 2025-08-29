@@ -111,6 +111,7 @@ async def main():
         try:
             log.info({"msg": "raw_message", "topic": topic, "payload": msg_bytes.decode(errors="ignore")})
             cae = normalizer.to_cae(msg_bytes)
+            log.info({"msg": "normalized_cae", "eventId": cae["eventId"], "sentAt": cae["sentAt"]})
             metrics.alerts_valid_total.inc()
             if not dedup.accept(cae["eventId"], cae["sentAt"]):
                 log.info({"msg": "duplicate_suppressed", "eventId": cae["eventId"]})
