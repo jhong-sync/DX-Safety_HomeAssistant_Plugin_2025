@@ -108,11 +108,11 @@ async def main():
     policy = PolicyEngine(cfg)
 
     local_pub = MqttPublisher(cfg.local_mqtt, metrics)
-    ha_client = HAClient(
-        timeout=cfg.homeassistant_api.timeout,
-        base_url=cfg.homeassistant_api.url,
-        token=cfg.homeassistant_api.token or None,
-    )
+    # ha_client = HAClient(
+    #     timeout=cfg.homeassistant_api.timeout,
+    #     base_url=cfg.homeassistant_api.url,
+    #     token=cfg.homeassistant_api.token or None,
+    # )
     # Expose simple test endpoint via ingress server
     async def _trigger_test():
         return await send_test_alert(ha_client)
@@ -138,7 +138,7 @@ async def main():
             # await tts.maybe_say(cae, decision)
             
             # DX-Safety 상태 센서 업데이트
-            await update_dxsafety_sensors(ha_client, cae, decision)
+            # await update_dxsafety_sensors(ha_client, cae, decision)
             
             metrics.alerts_triggered_total.inc()
         except Exception as e:
