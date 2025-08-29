@@ -1,0 +1,51 @@
+{
+  "remote_mqtt": {
+    "host": "localhost",
+    "port": 1883,
+    "topic": "/pws/mqtt/#",
+    "qos": 1,
+    "security_mode": "none",
+    "ca_cert_path": "",
+    "client_cert_path": "",
+    "client_key_path": "",
+    "username": "",
+    "password": "",
+    "keepalive": 30,
+    "clean_session": true,
+    "client_id": ""
+  },
+  "local_mqtt": {
+    "host": "localhost",
+    "port": 1883,
+    "topic_prefix": "dxsafety",
+    "qos": 1,
+    "retain": true
+  },
+  "homeassistant_api": {
+    "token": "test_token",
+    "url": "http://localhost:8123",
+    "timeout": 30
+  },
+  "policy": {
+    "default_location": "zone.home",
+    "lat": 37.5665,
+    "lon": 126.9780,
+    "radius_km_buffer": 2.0,
+    "severity_threshold": "moderate",
+    "night_mode": false
+  },
+  "tts": {
+    "enabled": false,
+    "topic": "dxsafety/tts",
+    "template": "{headline} - {description}"
+  },
+  "observability": {
+    "http_port": 8099,
+    "metrics_enabled": true,
+    "log_level": "INFO"
+  },
+  "reliability": {
+    "idempotency_ttl_sec": 86400,
+    "reconnect_max_backoff_sec": 120
+  }
+}

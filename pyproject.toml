@@ -12,7 +12,8 @@ dependencies = [
     "pydantic==2.8.2",
     "structlog>=23.0.0",
     "prometheus-client>=0.17.0",
-    "asyncio-mqtt>=0.16.0"
+    "asyncio-mqtt>=0.16.0",
+    "python-dateutil>=2.9.0.post0",
 ]
 
 [project.optional-dependencies]

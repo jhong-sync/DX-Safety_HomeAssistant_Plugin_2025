@@ -1,4 +1,6 @@
 import asyncio
+import argparse
+import os
 from app.settings import Settings
 from app.observability.logger import get_logger
 from app.observability.health import start_health_server
@@ -87,6 +89,17 @@ async def send_test_alert(ha_client: HAClient):
         return False
 
 async def main():
+    # 명령행 인수 파싱
+    parser = argparse.ArgumentParser(description="DX-Safety Home Assistant Plugin")
+    parser.add_argument("--test", action="store_true", help="테스트 모드로 실행 (test_config.json 사용)")
+    args = parser.parse_args()
+    
+    # 테스트 모드인지 확인
+    if args.test:
+        log.info("테스트 모드로 실행 중...")
+        # 테스트 모드일 때는 test_config.json 사용
+        os.environ["HA_OPTIONS_PATH"] = "test_config.json"
+    
     cfg = Settings.load()
     metrics = Metrics(enabled=cfg.observability.metrics_enabled)
 
@@ -109,7 +122,6 @@ async def main():
     async def handle_raw(msg_bytes: bytes, topic: str):
         metrics.alerts_received_total.inc()
         try:
-            log.info({"msg": "raw_message", "topic": topic, "payload": json.loads(msg_bytes.decode("utf-8"))})
             cae = normalizer.to_cae(msg_bytes)
             log.info({"msg": "normalized_cae", "eventId": cae["eventId"], "sentAt": cae["sentAt"]})
             metrics.alerts_valid_total.inc()

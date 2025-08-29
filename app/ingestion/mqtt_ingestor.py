@@ -74,7 +74,7 @@ class MqttIngestor:
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc == 0:
-            log.info({"msg": "ingestor_connected", "rc": rc})
+            log.info({"msg": "ingestor_connected", "rc": rc, "topic": self.cfg.topic})
             client.subscribe(self.cfg.topic, qos=self.cfg.qos)
             client.publish("dxsafety/status", payload="online", qos=1, retain=True)
         else:
