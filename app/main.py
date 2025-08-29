@@ -109,6 +109,7 @@ async def main():
     async def handle_raw(msg_bytes: bytes, topic: str):
         metrics.alerts_received_total.inc()
         try:
+            log.info({"msg": "raw_message", "topic": topic, "payload": msg_bytes.decode(errors="ignore")})
             cae = normalizer.to_cae(msg_bytes)
             metrics.alerts_valid_total.inc()
             if not dedup.accept(cae["eventId"], cae["sentAt"]):
