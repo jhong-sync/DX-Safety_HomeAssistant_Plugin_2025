@@ -11,6 +11,7 @@ class MqttPublisher:
         self.client.loop_start()
     async def publish_alert(self, cae: dict, decision):
         topic = f"{self.cfg.topic_prefix}/{decision.target_topic}"
+        log.info({"msg": "publish_alert", "topic": topic, "cae": cae, "decision": decision})
         payload = json.dumps({"headline": cae["headline"], "severity": cae["severity"]}, ensure_ascii=False)
         self.client.publish(topic, payload=payload, qos=self.cfg.qos, retain=self.cfg.retain)
 
