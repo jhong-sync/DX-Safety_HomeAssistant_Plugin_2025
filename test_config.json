@@ -30,7 +30,7 @@
     "default_location": "zone.home",
     "lat": 37.5665,
     "lon": 126.9780,
-    "radius_km_buffer": 2.0,
+    "radius_km_buffer": 100.0,
     "severity_threshold": "moderate",
     "night_mode": false
   },

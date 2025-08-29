@@ -1,5 +1,5 @@
 name: DX-Safety CAP Ingestor
-version: "0.1.7"
+version: "0.1.8"
 slug: dx_safety
 description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
 arch:
@@ -51,7 +51,7 @@ options:
     default_location: "zone.home"
     lat: 36.123
     lon: 127.234
-    radius_km_buffer: 0
+    radius_km_buffer: 10
     severity_threshold: "moderate"
     night_mode: false
   tts:

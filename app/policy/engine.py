@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
 from app.utils.geo import point_in_polygon, distance_km
+from app.observability.logger import get_logger
+log = get_logger()
 
 @dataclass
 class Decision:
@@ -24,6 +26,7 @@ class PolicyEngine:
             t = g.get("type")
             coords = g.get("coordinates", [])
             if t == "Point":
+                log.info({"msg": "point", "buffer": self.cfg.policy.radius_km_buffer, "home_lat": lat, "home_lon": lon, "eq_lat": coords[1], "eq_lon": coords[0], "distance": distance_km((lat, lon), (coords[1], coords[0]))})
                 in_area = distance_km((lat, lon), (coords[1], coords[0])) <= self.cfg.policy.radius_km_buffer
             elif t == "Circle":
                 in_area = distance_km((lat, lon), (coords[1], coords[0])) <= g.get("radius_km", 0) + self.cfg.policy.radius_km_buffer
@@ -32,12 +35,14 @@ class PolicyEngine:
             if in_area:
                 break
         if not in_area:
+            log.info({"msg": "outside_area", "cae": cae})
             return Decision(False, "outside_area")
+        log.info({"msg": "policy_triggered", "cae": cae})
         return Decision(True, "ok", target_topic="alerts")
 
     def _resolve_location(self):
         # TODO: Supervisor API 통해 zone.home 좌표 조회 (백업: 옵션 lat/lon)
-        if self.cfg.policy.lat is not None and self.cfg.policy.lon is not None:
-            return self.cfg.policy.lat, self.cfg.policy.lon
+        # if self.cfg.policy.lat is not None and self.cfg.policy.lon is not None:
+        #     return self.cfg.policy.lat, self.cfg.policy.lon
         # fallback 임시 좌표 (필히 실제 구현 교체)
-        return 37.5665, 126.9780
+        return 35.7234, 126.72134

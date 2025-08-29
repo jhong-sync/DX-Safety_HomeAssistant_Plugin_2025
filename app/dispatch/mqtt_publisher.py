@@ -1,6 +1,7 @@
 import json
 import paho.mqtt.client as mqtt
-
+from app.observability.logger import get_logger
+log = get_logger()
 class MqttPublisher:
     def __init__(self, cfg, metrics):
         self.cfg = cfg
@@ -9,7 +10,7 @@ class MqttPublisher:
         self.client.connect(cfg.host, cfg.port, keepalive=30)
         self.client.loop_start()
     async def publish_alert(self, cae: dict, decision):
-        topic = f"{self.cfg.topic_prefix}/{decision.target_topic}/{cae['eventId']}"
+        topic = f"{self.cfg.topic_prefix}/{decision.target_topic}"
         payload = json.dumps({"headline": cae["headline"], "severity": cae["severity"]}, ensure_ascii=False)
         self.client.publish(topic, payload=payload, qos=self.cfg.qos, retain=self.cfg.retain)
 
