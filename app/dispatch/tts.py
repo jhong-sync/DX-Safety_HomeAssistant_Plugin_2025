@@ -10,4 +10,4 @@ class TTSDispatcher:
             "description": cae.get("description", ""),
             "severity": cae.get("severity", "")
         })
-        await self.publisher.publish_alert({"headline": text, "severity": cae.get("severity", "")}, decision)
+        await self.publisher.publish_tts(self.cfg.topic, text, cae.get("severity", ""))

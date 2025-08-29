@@ -101,7 +101,17 @@ const DXSafetyCard: React.FC<DXSafetyCardProps> = ({ hass, config }) => {
   const sendTestAlert = async () => {
     setIsLoading(true);
     try {
-      await hass.callService('dxsafety', 'send_test_alert');
+      await hass.callService('homeassistant', 'fire_event', {
+        event_type: 'dxsafety_alert',
+        event_data: {
+          headline: '테스트 경보',
+          description: '이것은 테스트 알림입니다',
+          intensity_value: 'moderate',
+          level: 'moderate',
+          shelter: { name: '테스트 대피소' },
+          links: ['https://example.com/test']
+        }
+      });
       // 성공 메시지 표시
       setTimeout(() => setIsLoading(false), 2000);
     } catch (error) {

@@ -12,3 +12,8 @@ class MqttPublisher:
         topic = f"{self.cfg.topic_prefix}/{decision.target_topic}/{cae['eventId']}"
         payload = json.dumps({"headline": cae["headline"], "severity": cae["severity"]}, ensure_ascii=False)
         self.client.publish(topic, payload=payload, qos=self.cfg.qos, retain=self.cfg.retain)
+
+    async def publish_tts(self, topic: str, text: str, severity: str = ""):
+        # topic is expected to be absolute (e.g., "dxsafety/tts")
+        payload = json.dumps({"text": text, "severity": severity}, ensure_ascii=False)
+        self.client.publish(topic, payload=payload, qos=self.cfg.qos, retain=self.cfg.retain)

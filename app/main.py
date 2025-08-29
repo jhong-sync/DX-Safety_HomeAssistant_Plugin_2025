@@ -89,20 +89,28 @@ async def send_test_alert(ha_client: HAClient):
 async def main():
     cfg = Settings.load()
     metrics = Metrics(enabled=cfg.observability.metrics_enabled)
-    await start_health_server(port=cfg.observability.http_port, metrics=metrics)
 
     dedup = DedupStore(ttl=cfg.reliability.idempotency_ttl_sec)
     normalizer = Normalizer()
     policy = PolicyEngine(cfg)
 
     local_pub = MqttPublisher(cfg.local_mqtt, metrics)
-    ha_client = HAClient(timeout=5.0)
+    ha_client = HAClient(
+        timeout=cfg.homeassistant_api.timeout,
+        base_url=cfg.homeassistant_api.url,
+        token=cfg.homeassistant_api.token or None,
+    )
+    # Expose simple test endpoint via ingress server
+    async def _trigger_test():
+        return await send_test_alert(ha_client)
+    await start_health_server(port=cfg.observability.http_port, metrics=metrics, on_trigger_test=_trigger_test)
     tts = TTSDispatcher(cfg.tts, local_pub)
 
     async def handle_raw(msg_bytes: bytes, topic: str):
         metrics.alerts_received_total.inc()
         try:
             cae = normalizer.to_cae(msg_bytes)
+            metrics.alerts_valid_total.inc()
             if not dedup.accept(cae["eventId"], cae["sentAt"]):
                 log.info({"msg": "duplicate_suppressed", "eventId": cae["eventId"]})
                 return

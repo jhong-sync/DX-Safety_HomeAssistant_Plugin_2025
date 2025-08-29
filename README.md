@@ -1,113 +1,85 @@
 # DX-Safety CAP Ingestor
 
-Home Assistant Add-on으로 동작하는 CAP(CAP) 기반 재난 경보 수신/정규화/정책판정/디스패치 시스템입니다.
+Home Assistant Add-on으로 동작하는 CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 서비스입니다.
 
-## 🚀 주요 기능
+## 주요 기능
+- CAP 메시지 수신: MQTT를 통한 재난 경보 수신
+- 자동 정규화: 다양한 CAP 포맷을 CAE 스키마로 변환/검증
+- 정책 기반 결정: 임계값/영역 규칙에 따른 알림 트리거
+- Home Assistant 연동: 센서 상태 업데이트 및 이벤트 발행
+- 관측성: 헬스 체크와 메트릭 제공(프로메테우스 형식)
+- 테스트 유틸: 샘플 알림 발행(HA 이벤트 또는 HTTP 엔드포인트)
 
-- **CAP 메시지 수신**: MQTT를 통한 실시간 재난 경보 수신
-- **자동 정규화**: 다양한 CAP 형식을 표준 CAE 스키마로 변환
-- **정책 기반 판정**: 설정 가능한 임계값과 규칙에 따른 알림 트리거
-- **Home Assistant 통합**: 상태 센서 노출 및 서비스 호출
-- **실시간 모니터링**: 메트릭 수집 및 헬스 체크
-- **테스트 서비스**: 샘플 알림 발행으로 시스템 검증
+## 노출 센서
+- `sensor.dxsafety_last_headline` — 마지막 알림 헤드라인
+- `sensor.dxsafety_last_level` — 마지막 알림 레벨 (minor/moderate/severe/critical)
+- `sensor.dxsafety_last_intensity` — 마지막 알림 강도
+- `sensor.dxsafety_last_shelter` — 마지막 대피소 이름
 
-## 📊 상태 센서
+## 테스트 알림
 
-애드온은 다음 센서들을 자동으로 생성하고 업데이트합니다:
+1) Home Assistant 이벤트 발행
 
-- `sensor.dxsafety_last_headline` - 마지막 알림 헤드라인
-- `sensor.dxsafety_last_level` - 마지막 알림 레벨 (minor/moderate/severe/critical)
-- `sensor.dxsafety_last_intensity` - 마지막 알림 강도
-- `sensor.dxsafety_last_shelter` - 마지막 대피소 정보
+Developer Tools > Services에서 아래 서비스/데이터를 호출합니다.
 
-## 🔧 테스트 서비스
-
-### `dxsafety.send_test_alert` 서비스
-
-샘플 재난 경보를 발행하여 시스템을 테스트할 수 있습니다.
-
-**사용법:**
 ```yaml
-# Developer Tools > Services에서
-service: dxsafety.send_test_alert
+service: homeassistant.fire_event
+data:
+  event_type: dxsafety_alert
+  event_data:
+    headline: "테스트 경보"
+    description: "이것은 테스트 알림입니다"
+    intensity_value: "moderate"
+    level: "moderate"
+    shelter: { name: "테스트 대피소" }
+    links: ["https://example.com/test"]
 ```
 
-**발행되는 이벤트:**
-```json
-{
-  "event_type": "dxsafety_alert",
-  "payload": {
-    "headline": "테스트 재난 경보",
-    "description": "이것은 테스트용 재난 경보입니다.",
-    "intensity_value": "moderate",
-    "level": "moderate",
-    "shelter": {"name": "테스트 대피소"},
-    "links": ["https://example.com/test"]
-  }
-}
-```
+2) 애드온 HTTP 엔드포인트 (Ingress 경로 하위)
 
-## 🎛️ Helpers 기반 정책 조정
+POST `http://<addon-ingress-host>/trigger_test` 를 호출하면 내부적으로 `dxsafety_alert` 이벤트를 발행합니다.
 
-Home Assistant UI에서 다음 Helpers를 생성하여 정책을 조정할 수 있습니다:
+## Helpers 기반 정책 조정(예시)
 
-### Input Numbers (임계값 설정)
 ```yaml
-# 설정 > 장치 및 서비스 > Helpers > 숫자 입력
+# 설정 > 기기 & 서비스 > Helpers
 input_number:
   dxsafety_threshold_minor: 0
   dxsafety_threshold_moderate: 1
   dxsafety_threshold_severe: 2
   dxsafety_threshold_critical: 3
-```
 
-### Input Selects (알림 색상)
-```yaml
-# 설정 > 장치 및 서비스 > Helpers > 선택 입력
 input_select:
   dxsafety_light_severe_color:
-    name: "Severe 알림 색상"
-    options:
-      - "red"
-      - "orange"
-      - "yellow"
+    name: "Severe 경보 색상"
+    options: ["red", "orange", "yellow"]
     initial: "red"
   dxsafety_light_critical_color:
-    name: "Critical 알림 색상"
-    options:
-      - "red"
-      - "orange"
-      - "yellow"
+    name: "Critical 경보 색상"
+    options: ["red", "orange", "yellow"]
     initial: "red"
-```
 
-### Input Texts (알림 설정)
-```yaml
-# 설정 > 장치 및 서비스 > Helpers > 텍스트 입력
 input_text:
   dxsafety_sound_profile_ios:
-    name: "iOS 사운드 프로필"
+    name: "iOS 사운드 프로파일"
     initial: "default"
   dxsafety_channel_android:
     name: "Android 알림 채널"
     initial: "default"
 ```
 
-## 🎨 Lovelace 대시보드
+## Lovelace 커스텀 카드
 
-### Custom Card 설치
+### 빌드
 
-1. **빌드 실행:**
 ```bash
-cd lovelace/dxsafety-card
+cd dxsafety-card
 npm install
 npm run build
 ```
 
-2. **파일 복사:**
-빌드된 `dxsafety-card.js`를 `/config/www/dxsafety-card/`에 복사
+빌드된 `dist/dxsafety-card.js`를 Home Assistant의 `/config/www/dxsafety-card/`로 복사합니다.
 
-3. **리소스 등록:**
 ```yaml
 # configuration.yaml
 lovelace:
@@ -116,132 +88,82 @@ lovelace:
       type: module
 ```
 
-4. **카드 추가:**
+Lovelace 대시보드에서 다음 카드를 추가합니다.
+
 ```yaml
-# Lovelace 대시보드
 type: custom:dxsafety-card
 ```
 
-### 카드 기능
-
-- **실시간 상태 모니터링**: 모든 DX-Safety 센서 상태 표시
-- **정책 설정 관리**: Helper 값을 실시간으로 수정
-- **테스트 알림**: 원클릭으로 테스트 알림 발행
-- **반응형 디자인**: 모바일과 데스크톱 모두 지원
-
-## 🏗️ 아키텍처
+## 아키텍처 개요
 
 ```
-MQTT Ingestor → Normalizer → Policy Engine → Dispatcher
-     ↓              ↓           ↓           ↓
-  Raw CAP → CAE Schema → Decision → Home Assistant
+MQTT Ingestor -> Normalizer -> Policy Engine -> Dispatcher
+      |             |             |              |
+   Raw CAP      CAE Schema     Decision     Home Assistant/MQTT/TTS
 ```
 
-### 주요 컴포넌트
+주요 컴포넌트
+- `app/ingestion/mqtt_ingestor.py`: MQTT 메시지 수신
+- `app/normalize/normalizer.py`: CAP -> CAE 변환 및 스키마 검증
+- `app/policy/engine.py`: 정책 기반 결정
+- `app/dispatch/ha_client.py`: Home Assistant API 연동
+- `app/dispatch/mqtt_publisher.py`: 로컬 MQTT 발행
+- `app/dispatch/tts.py`: TTS 알림 발송
 
-- **`app/ingestion/mqtt_ingestor.py`**: MQTT 메시지 수신
-- **`app/normalize/normalizer.py`**: CAP → CAE 변환
-- **`app/policy/engine.py`**: 정책 기반 판정
-- **`app/dispatch/ha_client.py`**: Home Assistant API 통신
-- **`app/dispatch/mqtt_publisher.py`**: 로컬 MQTT 발행
-- **`app/dispatch/tts.py`**: TTS 알림 발송
+## 설정
 
-## ⚙️ 설정
-
-### 기본 설정 (config.yaml)
+`config.yaml`의 기본 옵션은 다음과 같습니다.
 
 ```yaml
 options:
   remote_mqtt:
     host: "broker.example.com"
-    port: 8883
+    port: 1883
     topic: "pws/cap/#"
-    tls: true
-  
+    qos: 1
+    security_mode: "none"   # none | tls | mtls
+
   local_mqtt:
     host: "core-mosquitto"
     port: 1883
     topic_prefix: "dxsafety"
-  
+
   policy:
     default_location: "zone.home"
     severity_threshold: "moderate"
-    radius_km_buffer: 0
-  
+
   observability:
     http_port: 8099
     metrics_enabled: true
 ```
 
-### 환경 변수
+환경변수
+- `SUPERVISOR_TOKEN`: Home Assistant API 접근 토큰(자동 주입)
+- `HA_OPTIONS_PATH`: 옵션 파일 경로(기본 `/data/options.json`)
 
-- `SUPERVISOR_TOKEN`: Home Assistant API 접근 토큰 (자동 설정)
+## 모니터링
 
-## 📈 모니터링
+헬스: `http://<addon-ingress-host>/health`
+메트릭: `http://<addon-ingress-host>/metrics`
 
-### 메트릭
+## 배포
 
-- `dxsafety_alerts_received_total`: 수신된 알림 수
-- `dxsafety_alerts_triggered_total`: 트리거된 알림 수
+Home Assistant Supervisor에서 리포지토리를 추가하고 애드온을 설치한 뒤 옵션을 구성합니다.
 
-### 헬스 체크
+## 문제 해결
 
-- HTTP 엔드포인트: `http://localhost:8099/health`
-- 메트릭 엔드포인트: `http://localhost:8099/metrics`
+1) 센서가 업데이트되지 않음
+- `SUPERVISOR_TOKEN` 확인
+- Home Assistant API 연결 상태 확인
 
-## 🚀 설치 및 실행
+2) 커스텀 카드 로드 실패
+- 파일 경로 및 lovelace 리소스 등록 확인
 
-### 1. Add-on 설치
-
-Home Assistant Supervisor에서 이 저장소를 추가하고 설치
-
-### 2. 설정 구성
-
-Add-on 설정에서 MQTT 브로커 정보와 정책 설정
-
-### 3. Helpers 생성
-
-위의 Helpers 섹션을 참고하여 필요한 엔티티 생성
-
-### 4. 대시보드 설정
-
-Lovelace에 custom card 추가하여 모니터링
-
-## 🔍 문제 해결
-
-### 일반적인 문제
-
-1. **센서가 업데이트되지 않음**
-   - `SUPERVISOR_TOKEN` 확인
-   - Home Assistant API 연결 상태 점검
-
-2. **테스트 서비스 호출 실패**
-   - Add-on 로그 확인
-   - 서비스 권한 확인
-
-3. **Custom Card 로드 실패**
-   - 파일 경로 확인
-   - 리소스 등록 상태 확인
-
-### 로그 확인
-
-```bash
-# Add-on 로그
-docker logs addon_dx_safety_cap
-```
-
-## 🤝 기여
+## 기여
 
 1. Fork the repository
 2. Create a feature branch
 3. Commit your changes
-4. Push to the branch
+4. Push the branch
 5. Create a Pull Request
 
-## 📄 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 배포됩니다.
-
-## 📞 지원
-
-문제가 발생하거나 질문이 있으시면 GitHub Issues를 통해 문의해 주세요.

@@ -1,7 +1,7 @@
 name: DX-Safety CAP Ingestor
-version: "0.1.1"
+version: "0.1.2"
 slug: dx_safety
-description: "CAP 기반 재난 경보 수신/정규화/정책판정/디스패치 애드온"
+description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
 arch:
   - amd64
   - aarch64
@@ -13,30 +13,30 @@ ingress: true
 ingress_port: 8099
 ingress_entry: "/"
 
-# Home Assistant 표준 마운트
+# Home Assistant 공유 디렉토리 마운트
 map:
   - "share:rw"
   - "ssl:ro"
 
-# Mosquitto 의존(선택)
+# Mosquitto 애드온(선택)
 services:
   - "mqtt:want"
 
 options:
   remote_mqtt:
-    host: "broker.example.com"
+    host: "192.168.144.100"
     port: 1883
     topic: "pws/cap/#"
     qos: 1
     security_mode: "none"         # none | tls | mtls
-    ca_cert_path: "/ssl/ca.crt"   # tls/mtls에서만 사용
-    client_cert_path: ""          # mtls에서만 사용
-    client_key_path: ""           # mtls에서만 사용
-    username: ""                  # 필요 없으면 키 삭제 가능
-    password: ""                  # 필요 없으면 키 삭제 가능
+    ca_cert_path: "/ssl/ca.crt"   # tls/mtls에서 사용
+    client_cert_path: ""          # mtls에서 사용
+    client_key_path: ""           # mtls에서 사용
+    username: ""
+    password: ""
     keepalive: 30
     clean_session: true
-    client_id: ""                 # 비우면 코드가 자동 생성(영속 세션 필요시 지정)
+    client_id: ""                 # 비우면 코드가 자동 생성(지속 세션 필요시 지정)
   local_mqtt:
     host: "core-mosquitto"
     port: 1883
@@ -44,13 +44,13 @@ options:
     qos: 1
     retain: true
   homeassistant_api:
-    token: ""                     # Supervisor 토큰을 코드에서 사용할 거면 빈 값 유지 가능
+    token: ""                     # Supervisor 토큰 사용 시 비워둘 수 있음
     url: "http://homeassistant:8123"
     timeout: 30
   policy:
     default_location: "zone.home"
-    lat: null
-    lon: null
+    lat: 36.123
+    lon: 127.234
     radius_km_buffer: 0
     severity_threshold: "moderate"
     night_mode: false
@@ -109,3 +109,4 @@ schema:
   reliability:
     idempotency_ttl_sec: int
     reconnect_max_backoff_sec: int
+

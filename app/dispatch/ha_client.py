@@ -5,10 +5,11 @@ import os
 from typing import Dict, Any, Optional
 
 class HAClient:
-    def __init__(self, timeout=5.0):
+    def __init__(self, timeout=5.0, base_url: str | None = None, token: str | None = None):
         self.timeout = timeout
-        self.base_url = "http://supervisor/core"
-        self.token = os.getenv("SUPERVISOR_TOKEN")
+        self.base_url = base_url or "http://supervisor/core"
+        # Prefer explicit token, fallback to Supervisor env
+        self.token = token or os.getenv("SUPERVISOR_TOKEN")
         
     async def trigger(self, decision):
         # TODO: Home Assistant 내부 서비스 호출(e.g., scene.turn_on, notify.*)
