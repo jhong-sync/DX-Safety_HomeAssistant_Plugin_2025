@@ -97,7 +97,11 @@ async def main():
         max_retries=s.reliability.publish_max_retries,
     )
     idem = SQLiteIdemStore(s.reliability.idem_path, s.reliability.idempotency_ttl_sec); await idem.init()
-    ha = HAClient(s)
+    ha = HAClient(
+        base_url=s.ha.base_url,
+        token=s.ha.token,
+        timeout_sec=s.ha.timeout_sec
+    )
 
     # HA 좌표 실패 시 자동 폴백(운영 친화)
     try:
