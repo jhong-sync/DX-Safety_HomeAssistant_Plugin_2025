@@ -12,6 +12,7 @@ from app.dedup.store import DedupStore
 from app.dispatch.mqtt_publisher import MqttPublisher
 from app.dispatch.ha_client import HAClient
 from app.dispatch.tts import TTSDispatcher
+from app.utils.env_checker import log_environment_summary
 
 log = get_logger()
 
@@ -102,6 +103,9 @@ async def main():
     
     cfg = Settings.load()
     metrics = Metrics(enabled=cfg.observability.metrics_enabled)
+
+    # 환경 설정 정보 로그 출력
+    log_environment_summary()
 
     dedup = DedupStore(ttl=cfg.reliability.idempotency_ttl_sec)
     normalizer = Normalizer()

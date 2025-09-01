@@ -14,12 +14,20 @@ class MqttPublisher:
         self._connected = False
         self._connection_task = None
         
+        # MQTT 연결 정보 로그 출력
+        log.info(f"[Local MQTT] 연결 설정:")
+        log.info(f"  - 호스트: {cfg.host}")
+        log.info(f"  - 포트: {cfg.port}")
+        log.info(f"  - 사용자명: {cfg.username or 'None'}")
+        log.info(f"  - 비밀번호: {'설정됨' if cfg.password else 'None'}")
+        log.info(f"  - 토픽 접두사: {cfg.topic_prefix}")
+        
         # MQTT 인증 설정
         if hasattr(cfg, 'username') and cfg.username:
             self.client.username_pw_set(cfg.username, cfg.password or "")
             log.info(f"[Local MQTT] 인증 설정: username={cfg.username}")
-        
-        # MQTT 콜백 설정
+        else:
+            log.warning("[Local MQTT] 사용자명이 설정되지 않았습니다")
         self.client.on_connect = self._on_connect
         self.client.on_disconnect = self._on_disconnect
         

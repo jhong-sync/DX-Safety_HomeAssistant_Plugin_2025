@@ -140,6 +140,13 @@ options:
 환경변수
 - `SUPERVISOR_TOKEN`: Home Assistant API 접근 토큰(자동 주입)
 - `HA_OPTIONS_PATH`: 옵션 파일 경로(기본 `/data/options.json`)
+- `MQTT_USERNAME`: Local MQTT 사용자명(기본값: "addons")
+- `MQTT_PASSWORD`: Local MQTT 비밀번호(Home Assistant 환경에서 자동 설정)
+
+**자동 설정 기능:**
+- Home Assistant Add-on 환경에서 실행 시 MQTT 연결 정보가 자동으로 설정됩니다
+- `localhost` → `core-mosquitto`로 자동 변환
+- 빈 사용자명/비밀번호 → Home Assistant 기본 MQTT 계정으로 자동 설정
 
 ## 모니터링
 

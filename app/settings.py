@@ -100,5 +100,33 @@ class Settings(BaseModel):
             else:
                 log.warning("SUPERVISOR_TOKEN 환경변수가 없습니다. Home Assistant API 기능이 제한될 수 있습니다.")
         
+        # Home Assistant 환경에서 Local MQTT 자격 증명 자동 감지
+        if data.get("local_mqtt", {}).get("enabled", True):
+            local_mqtt = data.get("local_mqtt", {})
+            
+            # Home Assistant Add-on 환경에서 자동 MQTT 인증 정보 감지
+            if not local_mqtt.get("username"):
+                # Home Assistant Add-on 기본 MQTT 사용자명
+                addon_username = os.getenv("MQTT_USERNAME", "addons")
+                if addon_username:
+                    local_mqtt["username"] = addon_username
+                    log.info(f"Local MQTT 사용자명이 자동으로 설정되었습니다: {addon_username}")
+            
+            if not local_mqtt.get("password"):
+                # Home Assistant Add-on 기본 MQTT 비밀번호
+                addon_password = os.getenv("MQTT_PASSWORD")
+                if addon_password:
+                    local_mqtt["password"] = addon_password
+                    log.info("Local MQTT 비밀번호가 자동으로 설정되었습니다")
+                else:
+                    log.warning("MQTT_PASSWORD 환경변수가 없습니다. Local MQTT 연결이 실패할 수 있습니다.")
+            
+            # Home Assistant 환경에서는 core-mosquitto 호스트 사용
+            if local_mqtt.get("host") in ["localhost", "127.0.0.1"]:
+                local_mqtt["host"] = "core-mosquitto"
+                log.info("Local MQTT 호스트가 core-mosquitto로 자동 설정되었습니다")
+            
+            data["local_mqtt"] = local_mqtt
+        
         return Settings(**data)
 

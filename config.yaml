@@ -1,5 +1,5 @@
 name: DX-Safety CAP Ingestor
-version: "0.1.18"
+version: "0.1.19"
 slug: dx_safety
 description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
 arch:
@@ -49,14 +49,14 @@ options:
     clean_session: true
     client_id: ""                 # 비우면 코드가 자동 생성(지속 세션 필요시 지정)
   local_mqtt:
-    host: "localhost"
+    host: "localhost"  # Home Assistant 환경에서 자동으로 core-mosquitto로 변경됨
     port: 1883
     topic_prefix: "dxsafety"
     qos: 1
     retain: true
     enabled: true
-    username: ""
-    password: ""
+    username: ""  # Home Assistant 환경에서 자동으로 addons로 설정됨
+    password: ""  # Home Assistant 환경에서 자동으로 설정됨
   homeassistant_api:
     token: ""                     # 일반적으로 비움: SUPERVISOR_TOKEN/파일로 자동 주입
     url: "http://supervisor/core" # Core API 프록시
