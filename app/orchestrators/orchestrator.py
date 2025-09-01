@@ -1,7 +1,7 @@
 """
-Phase 5 orchestrator for DX-Safety.
+Orchestrator for DX-Safety.
 
-This module implements the main orchestrator for Phase 5,
+This module implements the main orchestrator,
 with TTS voice notifications and Home Assistant integration.
 """
 
@@ -25,7 +25,7 @@ from app.observability.logger import get_logger
 log = get_logger()
 
 class Orchestrator:
-    """Phase 5 오케스트레이터 (TTS & 음성 알림)"""
+    """오케스트레이터 (TTS & 음성 알림)"""
     
     def __init__(self, 
                  ingest: AlertIngestPort, 
@@ -77,7 +77,7 @@ class Orchestrator:
         # 시작 시간 기록
         self.start_time = time.time()
         
-        log.info("Phase 5 오케스트레이터 초기화됨", 
+        log.info("오케스트레이터 초기화됨", 
                 severity_threshold=severity_threshold,
                 distance_threshold_km=distance_threshold_km,
                 polygon_buffer_km=polygon_buffer_km,
@@ -109,7 +109,7 @@ class Orchestrator:
         # 메트릭 업데이트 태스크
         metrics_task = asyncio.create_task(self._update_metrics())
         
-        log.info("Phase 5 오케스트레이터 시작됨")
+        log.info("오케스트레이터 시작됨")
         
         # 모든 태스크 완료 대기
         if self.voice_enabled:
