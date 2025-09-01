@@ -55,6 +55,20 @@ class Settings(BaseModel):
     dry_run: bool = False
     rollback_mode: bool = False
 
+class TTS(BaseModel):
+    enabled: bool = False
+    topic: str = "dxsafety/tts"
+    template: str = "{headline} - {description}"
+    voice_language: str = "ko-KR"
+
+class Policy(BaseModel):
+    default_location: str = "zone.home"
+    lat: float = 37.5665
+    lon: float = 126.9780
+    radius_km_buffer: float = 10
+    severity_threshold: str = "moderate"
+    night_mode: bool = False
+
     # 하위 섹션 (기본값/팩토리로 누락 방지)
     remote_mqtt: RemoteMQTT = Field(default_factory=RemoteMQTT)
     local_mqtt: LocalMQTT = Field(default_factory=LocalMQTT)
@@ -62,3 +76,5 @@ class Settings(BaseModel):
     geopolicy: GeoPolicy = Field(default_factory=GeoPolicy)
     observability: Observability = Field(default_factory=Observability)
     reliability: Reliability = Field(default_factory=Reliability)
+    tts: TTS = Field(default_factory=TTS)
+    policy: Policy = Field(default_factory=Policy)
