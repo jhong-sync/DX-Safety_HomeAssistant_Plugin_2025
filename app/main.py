@@ -140,8 +140,8 @@ async def main():
     except RuntimeError: pass
 
     orch_task = asyncio.create_task(orch.start())
-    await stop
-    orch_task.cancel()
+    # await stop
+    # orch_task.cancel()
     # if http_task: http_task.cancel()
 
 if __name__ == "__main__":
