@@ -14,17 +14,38 @@ def _b(name, default=False): return os.getenv(name, str(default)).lower() in ("1
 
 def build_settings() -> Settings:
     s = Settings()
+    # 플래그
     s.dry_run = _b("DRY_RUN", getattr(s, "dry_run", False))
     setattr(s, "rollback_mode", _b("ROLLBACK_MODE", False))
+
+    # REMOTE MQTT
     s.remote_mqtt.host = os.getenv("REMOTE_MQTT_HOST", s.remote_mqtt.host)
     s.remote_mqtt.port = int(os.getenv("REMOTE_MQTT_PORT", s.remote_mqtt.port))
+    s.remote_mqtt.username = os.getenv("REMOTE_MQTT_USERNAME", s.remote_mqtt.username)
+    s.remote_mqtt.password = os.getenv("REMOTE_MQTT_PASSWORD", s.remote_mqtt.password)
+    s.remote_mqtt.client_id = os.getenv("REMOTE_MQTT_CLIENT_ID", s.remote_mqtt.client_id)
+    s.remote_mqtt.keepalive = int(os.getenv("REMOTE_MQTT_KEEPALIVE", s.remote_mqtt.keepalive))
+    s.remote_mqtt.clean_session = _b("REMOTE_MQTT_CLEAN_SESSION", s.remote_mqtt.clean_session)
+    s.remote_mqtt.tls = _b("REMOTE_MQTT_TLS", s.remote_mqtt.tls)
+    s.remote_mqtt.topic = os.getenv("REMOTE_TOPIC", s.remote_mqtt.topic)
+
+    # LOCAL MQTT
     s.local_mqtt.host  = os.getenv("LOCAL_MQTT_HOST", s.local_mqtt.host)
     s.local_mqtt.port  = int(os.getenv("LOCAL_MQTT_PORT", s.local_mqtt.port))
+    s.local_mqtt.username = os.getenv("LOCAL_MQTT_USERNAME", s.local_mqtt.username)
+    s.local_mqtt.password = os.getenv("LOCAL_MQTT_PASSWORD", s.local_mqtt.password)
+    s.local_mqtt.topic_prefix = os.getenv("LOCAL_TOPIC_PREFIX", s.local_mqtt.topic_prefix)
+
+    # 정책
     s.geopolicy.mode = os.getenv("GEO_MODE", s.geopolicy.mode)
     s.geopolicy.severity_threshold = os.getenv("SEVERITY_THRESHOLD", s.geopolicy.severity_threshold)
     s.geopolicy.distance_km_threshold = float(os.getenv("DISTANCE_KM_THRESHOLD", s.geopolicy.distance_km_threshold))
+
+    # HA
     s.ha.base_url = os.getenv("HA_BASE_URL", s.ha.base_url)
     s.ha.token = os.getenv("HA_TOKEN", s.ha.token)
+
+    # 관측성
     s.observability.metrics_enabled = _b("METRICS_ENABLED", s.observability.metrics_enabled)
     s.observability.http_port = int(os.getenv("METRICS_PORT", s.observability.http_port))
     return s
@@ -41,21 +62,38 @@ async def main():
     s = build_settings()
 
     ingest = RemoteMqttIngestor(
-        host=s.remote_mqtt.host, port=s.remote_mqtt.port, topic=s.remote_topic,
-        username=s.remote_mqtt.username, password=s.remote_mqtt.password,
-        tls=s.remote_mqtt.tls, client_id=s.remote_mqtt.client_id,
-        keepalive=s.remote_mqtt.keepalive, clean_session=s.remote_mqtt.clean_session,
-        lwt_topic=s.remote_mqtt.lwt_topic, lwt_payload=s.remote_mqtt.lwt_payload,
-        lwt_qos=s.remote_mqtt.lwt_qos, lwt_retain=s.remote_mqtt.lwt_retain,
+        host=s.remote_mqtt.host,
+        port=s.remote_mqtt.port,
+        topic=s.remote_mqtt.topic,
+        username=s.remote_mqtt.username,
+        password=s.remote_mqtt.password,
+        tls=s.remote_mqtt.tls,
+        client_id=s.remote_mqtt.client_id,
+        keepalive=s.remote_mqtt.keepalive,
+        clean_session=s.remote_mqtt.clean_session,
+        lwt_topic=s.remote_mqtt.lwt_topic,
+        lwt_payload=s.remote_mqtt.lwt_payload,
+        lwt_qos=s.remote_mqtt.lwt_qos,
+        lwt_retain=s.remote_mqtt.lwt_retain,
     )
+
     outbox = SQLiteOutbox(s.reliability.outbox_path); await outbox.init()
     publisher = LocalMqttPublisher(
-        broker_host=s.local_mqtt.host, broker_port=s.local_mqtt.port, topic_prefix=s.local_mqtt.local_topic_prefix if hasattr(s.local_mqtt,'local_topic_prefix') else s.local_mqtt.host,
-        outbox=outbox, username=s.local_mqtt.username, password=s.local_mqtt.password,
-        tls=s.local_mqtt.tls, client_id=s.local_mqtt.client_id, keepalive=s.local_mqtt.keepalive,
-        lwt_topic=s.local_mqtt.lwt_topic, lwt_payload_online="online",
-        qos_default=1, retain_default=False,
-        backoff_initial=s.reliability.backoff_initial_sec, backoff_max=s.reliability.backoff_max_sec,
+        broker_host=s.local_mqtt.host,
+        broker_port=s.local_mqtt.port,
+        topic_prefix=s.local_mqtt.topic_prefix,
+        outbox=outbox,
+        username=s.local_mqtt.username,
+        password=s.local_mqtt.password,
+        tls=s.local_mqtt.tls,
+        client_id=s.local_mqtt.client_id,
+        keepalive=s.local_mqtt.keepalive,
+        lwt_topic=s.local_mqtt.lwt_topic,
+        lwt_payload_online="online",
+        qos_default=1,
+        retain_default=False,
+        backoff_initial=s.reliability.backoff_initial_sec,
+        backoff_max=s.reliability.backoff_max_sec,
         max_retries=s.reliability.publish_max_retries,
     )
     idem = SQLiteIdemStore(s.reliability.idem_path, s.reliability.idempotency_ttl_sec); await idem.init()
