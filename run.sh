@@ -93,4 +93,4 @@ export ROLLBACK_MODE="false"
 export PYTHONPATH="/opt/app"
 
 # ---------- 실행 ----------
-exec python3 -m app.main
+exec python3 -m main

@@ -1,5 +1,5 @@
 name: DX-Safety CAP 처리기
-version: "0.2.1"
+version: "0.2.2"
 slug: dx_safety
 description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
 arch: [amd64, aarch64]

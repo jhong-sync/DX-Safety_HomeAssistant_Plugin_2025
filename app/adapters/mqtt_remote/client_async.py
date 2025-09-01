@@ -8,7 +8,7 @@ with reliability features including reconnect logic and LWT.
 import asyncio
 import json
 from typing import AsyncIterator, Dict
-from asyncio_mqtt import Client, MqttError
+from aiomqtt import Client, MqttError
 from app.observability.logger import get_logger
 
 log = get_logger()

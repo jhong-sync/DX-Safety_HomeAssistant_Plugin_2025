@@ -8,7 +8,7 @@ with outbox pattern for durable message delivery.
 import asyncio
 import json
 from typing import Optional
-from asyncio_mqtt import Client, MqttError
+from aiomqtt import Client, MqttError
 from app.adapters.storage.sqlite_outbox import SQLiteOutbox
 from app.common.retry import exponential_backoff
 from app.observability.logger import get_logger
