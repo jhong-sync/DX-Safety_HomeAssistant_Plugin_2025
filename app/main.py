@@ -129,7 +129,7 @@ async def main():
         s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
 
     orch = Orchestrator(ingest, publisher, idem, ha, tts_engine, severity_threshold=s.geopolicy.severity_threshold, distance_threshold_km=s.geopolicy.distance_km_threshold, polygon_buffer_km=s.geopolicy.polygon_buffer_km, policy_mode=s.geopolicy.mode, voice_enabled=s.tts.enabled, voice_language=s.tts.voice_language, queue_maxsize=s.reliability.queue_maxsize)
-    http_task = await start_http(s)
+    # http_task = await start_http(s)
 
     stop = asyncio.Future()
     try:
@@ -142,7 +142,7 @@ async def main():
     orch_task = asyncio.create_task(orch.start())
     await stop
     orch_task.cancel()
-    if http_task: http_task.cancel()
+    # if http_task: http_task.cancel()
 
 if __name__ == "__main__":
     asyncio.run(main())
