@@ -111,9 +111,9 @@ async def main():
     local_pub = None
     if cfg.local_mqtt.enabled:
         local_pub = MqttPublisher(cfg.local_mqtt, metrics)
-        log.info("로컬 MQTT Publisher 초기화됨")
+        log.info("[Local MQTT] Publisher 초기화됨")
     else:
-        log.info("로컬 MQTT Publisher 비활성화됨")
+        log.info("[Local MQTT] Publisher 비활성화됨")
     
     ha_client = HAClient(
         timeout=cfg.homeassistant_api.timeout,

@@ -49,12 +49,14 @@ options:
     clean_session: true
     client_id: ""                 # 비우면 코드가 자동 생성(지속 세션 필요시 지정)
   local_mqtt:
-    host: "core-mosquitto"
+    host: "localhost"
     port: 1883
     topic_prefix: "dxsafety"
     qos: 1
     retain: true
     enabled: true
+    username: ""
+    password: ""
   homeassistant_api:
     token: ""                     # 일반적으로 비움: SUPERVISOR_TOKEN/파일로 자동 주입
     url: "http://supervisor/core" # Core API 프록시
@@ -105,6 +107,8 @@ schema:
     qos: int
     retain: bool
     enabled: bool
+    username: str?
+    password: password?
   homeassistant_api:
     token: password?
     url: url

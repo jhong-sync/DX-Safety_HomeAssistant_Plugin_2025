@@ -31,6 +31,8 @@ class LocalMqtt(BaseModel):
     qos: int = 1
     retain: bool = True
     enabled: bool = True  # MQTT 기능을 선택적으로 활성화
+    username: Optional[str] = None
+    password: Optional[str] = None
 
 
 class HomeAssistantAPI(BaseModel):

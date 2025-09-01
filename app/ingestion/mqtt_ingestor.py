@@ -42,7 +42,7 @@ class MqttIngestor:
         # --- 설정 요약 로그 (민감정보 제외) ---
         mode = getattr(cfg, "security_mode", "none")
         log.info({
-            "msg": "mqtt_config",
+            "msg": "[Remote MQTT] mqtt_config",
             "host": getattr(cfg,"host",""),
             "port": getattr(cfg,"port",0),
             "mode": mode,
@@ -94,14 +94,14 @@ class MqttIngestor:
 
     def _on_connect(self, client, userdata, flags, rc):
         if rc == 0:
-            log.info({"msg": "ingestor_connected", "rc": rc, "topic": self.cfg.topic})
+            log.info({"msg": "[Remote MQTT] ingestor_connected", "rc": rc, "topic": self.cfg.topic})
             client.subscribe(self.cfg.topic, qos=self.cfg.qos)
             client.publish("dxsafety/status", payload="online", qos=1, retain=True)
         else:
-            log.error({"msg": "ingestor_connect_failed", "rc": rc})
+            log.error({"msg": "[Remote MQTT] ingestor_connect_failed", "rc": rc})
 
     def _on_disconnect(self, client, userdata, rc):
-        log.info({"msg": "ingestor_disconnected", "rc": rc})
+        log.info({"msg": "[Remote MQTT] ingestor_disconnected", "rc": rc})
         try:
             self.metrics.ingestor_reconnects_total.inc()
         except Exception:
@@ -114,13 +114,13 @@ class MqttIngestor:
                 self.loop
             )
         except Exception as e:
-            log.exception({"msg":"ingestor_on_message_error", "error": str(e)})
+            log.exception({"msg":"[Remote MQTT] ingestor_on_message_error", "error": str(e)})
 
     async def _connect_with_retry(self):
         """재시도 로직으로 MQTT 연결"""
         return await self.retry_manager.execute_with_retry(
             self._connect_once,
-            "MQTT Ingestor 연결"
+            "[Remote MQTT] 연결"
         )
     
     def _connect_once(self):
@@ -128,14 +128,14 @@ class MqttIngestor:
         # 포트/모드 불일치 경고
         mode = getattr(self.cfg, "security_mode", "none")
         if (mode == "none" and self.cfg.port == 8883) or (mode in ("tls","mtls") and self.cfg.port == 1883):
-            log.warning({"msg":"mqtt_port_mode_mismatch","mode":mode,"port":self.cfg.port})
+            log.warning({"msg":"[Remote MQTT] mqtt_port_mode_mismatch","mode":mode,"port":self.cfg.port})
 
         # TCP 프리플라이트 (빠르게 원인 파악)
         try:
             sock = socket.create_connection((self.cfg.host, self.cfg.port), timeout=5)
             sock.close()
         except Exception as e:
-            log.error({"msg":"mqtt_tcp_unreachable","host":self.cfg.host,"port":self.cfg.port,"error":str(e)})
+            log.error({"msg":"[Remote MQTT] mqtt_tcp_unreachable","host":self.cfg.host,"port":self.cfg.port,"error":str(e)})
             raise
 
         # 접속
@@ -154,7 +154,7 @@ class MqttIngestor:
 
             except Exception as e:
                 log.exception({
-                    "msg":"ingestor_error",
+                    "msg":"[Remote MQTT] ingestor_error",
                     "host": getattr(self.cfg,"host",""),
                     "port": getattr(self.cfg,"port",0),
                     "mode": getattr(self.cfg,"security_mode",""),

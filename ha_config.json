@@ -15,12 +15,14 @@
     "client_id": ""
   },
   "local_mqtt": {
-    "host": "core-mosquitto",
+    "host": "localhost",
     "port": 1883,
     "topic_prefix": "dxsafety",
     "qos": 1,
     "retain": true,
-    "enabled": true
+    "enabled": true,
+    "username": "",
+    "password": ""
   },
   "homeassistant_api": {
     "token": "",
