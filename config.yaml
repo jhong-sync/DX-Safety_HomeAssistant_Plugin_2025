@@ -1,17 +1,28 @@
 name: DX-Safety CAP Ingestor
-version: "0.1.14"
+version: "0.1.15"
 slug: dx_safety
 description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
 arch:
   - amd64
   - aarch64
 startup: services
+boot: auto
 init: false
+stage: experimental
+homeassistant: "2024.6.0"
+homeassistant_api: true     # ← Core API(http://supervisor/core) 접근 허용
+hassio_api: false           # ← Supervisor API가 필요하면 true로
 
 # Ingress UI
 ingress: true
-ingress_port: 8099
+ingress_port: 8099          # 컨테이너 내부 HTTP 포트
 ingress_entry: "/"
+panel_title: "DX-Safety"
+panel_icon: "mdi:shield-alert"
+# Ingress에서는 일반 포트 매핑 불필요(ports 키 X)
+
+# 헬스 체크(워치독): 컨테이너 내부 헬스엔드포인트
+watchdog: "http://[HOST]:8099/healthz"
 
 # Home Assistant 공유 디렉토리 마운트
 map:
@@ -45,15 +56,15 @@ options:
     retain: true
     enabled: true
   homeassistant_api:
-    token: ""                     # Supervisor 토큰 사용 시 비워둘 수 있음
-    url: "http://supervisor/core"
+    token: ""                     # 일반적으로 비움: SUPERVISOR_TOKEN/파일로 자동 주입
+    url: "http://supervisor/core" # Core API 프록시
     timeout: 30
   policy:
     default_location: "zone.home"
     lat: 36.123
     lon: 127.234
     radius_km_buffer: 10
-    severity_threshold: "moderate"
+    severity_threshold: "moderate"  # minor|moderate|severe|critical
     night_mode: false
   tts:
     enabled: false
@@ -121,4 +132,3 @@ schema:
     max_delay: float
     backoff_factor: float
     jitter: bool
-

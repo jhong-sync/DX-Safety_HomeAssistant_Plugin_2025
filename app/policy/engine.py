@@ -9,6 +9,7 @@ class Decision:
     trigger: bool
     reason: str
     target_topic: str = ""
+    level: str = "moderate"  # 알림 레벨 추가
 
 class PolicyEngine:
     def __init__(self, cfg):
@@ -38,7 +39,7 @@ class PolicyEngine:
             log.info({"msg": "outside_area", "cae": cae})
             return Decision(False, "outside_area")
         log.info({"msg": "policy_triggered", "cae": cae})
-        return Decision(True, "ok", target_topic="alerts")
+        return Decision(True, "ok", target_topic="alerts", level=cae.get("severity", "moderate"))
 
     def _resolve_location(self):
         # TODO: Supervisor API 통해 zone.home 좌표 조회 (백업: 옵션 lat/lon)

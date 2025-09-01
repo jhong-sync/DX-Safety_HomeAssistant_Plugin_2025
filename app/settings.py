@@ -95,6 +95,8 @@ class Settings(BaseModel):
                     data["homeassistant_api"] = {}
                 data["homeassistant_api"]["token"] = supervisor_token
                 log.info("Supervisor 토큰이 자동으로 설정되었습니다")
+            else:
+                log.warning("SUPERVISOR_TOKEN 환경변수가 없습니다. Home Assistant API 기능이 제한될 수 있습니다.")
         
         return Settings(**data)
 

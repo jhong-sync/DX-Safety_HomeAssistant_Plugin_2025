@@ -90,9 +90,21 @@ class MqttPublisher:
         payload = json.dumps({"headline": cae["headline"], "severity": cae["severity"]}, ensure_ascii=False)
         
         try:
+            # 연결 상태 재확인
+            if not self.client.is_connected():
+                log.warning("MQTT 클라이언트 연결 끊어짐 - 재연결 시도")
+                await self._connect_with_retry()
+                if not self.client.is_connected():
+                    log.error("MQTT 재연결 실패 - 발행 건너뜀")
+                    return
+            
             result = self.client.publish(topic, payload=payload, qos=self.cfg.qos, retain=self.cfg.retain)
             if result.rc != mqtt.MQTT_ERR_SUCCESS:
                 log.error(f"MQTT 발행 실패: {result.rc}")
+                # 발행 실패 시 재연결 시도
+                if result.rc == mqtt.MQTT_ERR_NO_CONN:
+                    log.info("MQTT 연결 끊어짐 감지 - 재연결 시도")
+                    await self._connect_with_retry()
         except Exception as e:
             log.error(f"MQTT 발행 중 오류: {e}")
 
