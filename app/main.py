@@ -1,6 +1,7 @@
 # app/main.py
 import os, asyncio, signal
 from typing import Optional
+import uvicorn
 from app.adapters.tts.engine import TTSEngine
 from app.settings import Settings
 from app.observability.health import create_app
@@ -65,11 +66,10 @@ def build_settings() -> Settings:
 
 async def start_http(settings: Settings) -> Optional[asyncio.Task]:
     if not settings.observability.metrics_enabled: return None
-    import uvicorn
-    app = create_app(settings)
-    return asyncio.create_task(uvicorn.Server(
-        uvicorn.Config(app, host="0.0.0.0", port=settings.observability.http_port, log_level="info")
-    ).serve())
+    # app = create_app(settings)
+    # return asyncio.create_task(uvicorn.Server(
+    #     uvicorn.Config(app, host="0.0.0.0", port=settings.observability.http_port, log_level="info")
+    # ).serve())
 
 async def main():
     s = build_settings()
@@ -129,7 +129,7 @@ async def main():
         s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
 
     orch = Orchestrator(ingest, publisher, idem, ha, tts_engine, severity_threshold=s.geopolicy.severity_threshold, distance_threshold_km=s.geopolicy.distance_km_threshold, polygon_buffer_km=s.geopolicy.polygon_buffer_km, policy_mode=s.geopolicy.mode, voice_enabled=s.tts.enabled, voice_language=s.tts.voice_language, queue_maxsize=s.reliability.queue_maxsize)
-    # http_task = await start_http(s)
+    http_task = await start_http(s)
 
     stop = asyncio.Future()
     try:
@@ -140,9 +140,9 @@ async def main():
     except RuntimeError: pass
 
     orch_task = asyncio.create_task(orch.start())
-    # await stop
-    # orch_task.cancel()
-    # if http_task: http_task.cancel()
+    await stop
+    orch_task.cancel()
+    if http_task: http_task.cancel()
 
 if __name__ == "__main__":
     asyncio.run(main())
