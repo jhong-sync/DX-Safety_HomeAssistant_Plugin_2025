@@ -33,7 +33,7 @@ class HAClient:
         self.timeout = timeout
         self.session: Optional[aiohttp.ClientSession] = None
         
-        log.info("Home Assistant 클라이언트 초기화됨", base_url=base_url)
+        log.info("Home Assistant 클라이언트 초기화됨")
     
     async def __aenter__(self):
         """비동기 컨텍스트 매니저 진입"""
@@ -152,7 +152,7 @@ class HAClient:
                             "last_updated": state.get("last_updated")
                         }
             
-            log.info("디바이스 상태 가져옴", count=len(device_states))
+            log.info("디바이스 상태 가져옴")
             return device_states
             
         except Exception as e:
@@ -178,7 +178,7 @@ class HAClient:
                 json=kwargs
             )
             
-            log.info("서비스 호출 성공", domain=domain, service=service)
+            log.info("서비스 호출 성공")
             return True
             
         except Exception as e:
