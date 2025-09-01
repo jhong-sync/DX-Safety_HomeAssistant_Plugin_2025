@@ -1,5 +1,5 @@
 name: DX-Safety CAP Ingestor
-version: "0.1.17"
+version: "0.1.18"
 slug: dx_safety
 description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
 arch:
@@ -31,7 +31,7 @@ map:
 
 # Mosquitto 애드온(선택)
 services:
-  - "mqtt:want"
+  - "mqtt:need"
 
 options:
   remote_mqtt:
