@@ -62,7 +62,6 @@ def create_app(settings: Settings) -> FastAPI:
     async def info():
         """서비스 정보 엔드포인트"""
         uptime = time.time() - start_time
-        
         return JSONResponse({
             "service": settings.observability.service_name,
             "version": settings.observability.build_version,

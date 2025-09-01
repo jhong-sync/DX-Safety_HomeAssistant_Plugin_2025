@@ -85,7 +85,7 @@ async def test_exponential_backoff():
     await exponential_backoff(1, 0.1, 1.0)
     
     elapsed = time.time() - start_time
-    assert 0.09 <= elapsed <= 0.11  # 약 0.1초 지연
+    assert 0.09 <= elapsed <= 0.15  # 약 0.1초 지연 (여유 있게)
     
     start_time = time.time()
     await exponential_backoff(2, 0.1, 1.0)

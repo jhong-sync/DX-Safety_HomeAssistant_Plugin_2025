@@ -51,9 +51,13 @@ class TTSEngine:
     async def start(self) -> None:
         """TTS 엔진을 시작합니다."""
         self.is_running = True
-        worker = asyncio.create_task(self._voice_worker())
         log.info("TTS 엔진 시작됨")
-        await worker
+        # HA 세션을 엔진 수명 동안 유지
+        try:
+            async with self.ha_client:
+                await self._voice_worker()
+        finally:
+            self.is_running = False
     
     async def stop(self) -> None:
         """TTS 엔진을 중지합니다."""

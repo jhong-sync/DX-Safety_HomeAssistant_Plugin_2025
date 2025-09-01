@@ -73,7 +73,6 @@ async def start_http(settings: Settings) -> Optional[asyncio.Task]:
 
 async def main():
     s = build_settings()
-    tts_engine = TTSEngine(s.tts.topic, s.tts.template, s.tts.voice_language)
     ingest = RemoteMqttIngestor(
         host=s.remote_mqtt.host,
         port=s.remote_mqtt.port,
@@ -115,10 +114,17 @@ async def main():
         token=s.ha.token,
         timeout=10
     )
+    tts_engine = TTSEngine(
+        ha_client=ha,
+        default_voice=s.tts.voice_language
+    )
 
     # HA 좌표 실패 시 자동 폴백(운영 친화)
     try:
-        await ha.get_home_location_cached(ttl_sec=300)
+        async with ha:
+            coords = await ha.get_zone_home()
+            if not coords:
+                s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
     except Exception:
         s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
 

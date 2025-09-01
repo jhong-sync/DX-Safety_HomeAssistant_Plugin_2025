@@ -19,13 +19,13 @@ from app.settings import Settings
 @pytest.fixture
 def test_settings():
     """테스트용 설정"""
-    from app.settings import RemoteMqtt, LocalMqtt, HomeAssistantAPI, Policy, TTS, Observability, Reliability
+    from app.settings import RemoteMQTT, LocalMQTT, HAConfig, GeoPolicy, TTS, Observability, Reliability
     
     return Settings(
-        remote_mqtt=RemoteMqtt(host="test", port=1883, topic="test"),
-        local_mqtt=LocalMqtt(host="test", port=1883, topic_prefix="test"),
-        homeassistant_api=HomeAssistantAPI(),
-        policy=Policy(default_location="test"),
+        remote_mqtt=RemoteMQTT(host="test", port=1883, topic="test"),
+        local_mqtt=LocalMQTT(host="test", port=1883, topic_prefix="test"),
+        ha=HAConfig(),
+        geopolicy=GeoPolicy(),
         tts=TTS(enabled=False, topic="test", template="test"),
         observability=Observability(
             http_port=8099,

@@ -39,6 +39,10 @@ class GeoPolicy(BaseModel):
 class Observability(BaseModel):
     http_port: int = 8099
     metrics_enabled: bool = True
+    service_name: str = "DX-Safety"
+    build_version: str = "0.1.3"
+    build_date: str = "2025-01-01"
+    log_level: str = "INFO"
 
 class Reliability(BaseModel):
     idempotency_ttl_sec: int = 86400

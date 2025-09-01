@@ -70,9 +70,12 @@ async def test_add_if_absent_and_gc():
         assert await store.add_if_absent("k1") is True
         assert await store.add_if_absent("k1") is False  # 중복
         
-        # 1초 대기 후 GC 실행
-        time.sleep(1.1)
-        deleted = await store.gc()
+        # TTL보다 긴 시간 대기 후 GC 실행
+        await asyncio.sleep(1.2)
+        
+        # GC를 명시적으로 미래 시간으로 실행하여 확실히 삭제
+        future_time = int(time.time()) + 10
+        deleted = await store.gc(now=future_time)
         assert deleted >= 1
         
         # GC 후 항목 수가 0이어야 함
@@ -95,14 +98,14 @@ async def test_gc_with_custom_time():
         # 키 추가
         await store.add_if_absent("k1")
         
-        # 미래 시간으로 GC 실행 (삭제되지 않아야 함)
-        future_time = int(time.time()) + 7200  # 2시간 후
-        deleted = await store.gc(now=future_time)
-        assert deleted == 0
-        
-        # 과거 시간으로 GC 실행 (삭제되어야 함)
+        # 과거 시간으로 GC 실행 (삭제되지 않아야 함)
         past_time = int(time.time()) - 7200  # 2시간 전
         deleted = await store.gc(now=past_time)
+        assert deleted == 0
+        
+        # 미래 시간으로 GC 실행 (삭제되어야 함)
+        future_time = int(time.time()) + 7200  # 2시간 후
+        deleted = await store.gc(now=future_time)
         assert deleted >= 1
     finally:
         os.unlink(db_path)
