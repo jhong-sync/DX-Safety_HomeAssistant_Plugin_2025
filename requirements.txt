@@ -1,5 +1,5 @@
 paho-mqtt==1.6.1
-asyncio-mqtt>=0.16.0
+aiomqtt>=1.0.0,<2
 jsonschema==4.23.0
 shapely==2.0.4
 aiohttp==3.10.5
