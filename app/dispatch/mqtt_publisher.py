@@ -41,8 +41,7 @@ class MqttPublisher:
         try:
             await self.retry_manager.execute_with_retry(
                 self._connect_once,
-                "MQTT 연결",
-                max_retries=5
+                "MQTT 연결"
             )
             self._connected = True
             log.info("MQTT 연결 성공")

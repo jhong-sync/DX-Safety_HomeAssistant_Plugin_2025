@@ -1,5 +1,5 @@
 name: DX-Safety CAP Ingestor
-version: "0.1.13"
+version: "0.1.14"
 slug: dx_safety
 description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
 arch:
@@ -38,14 +38,15 @@ options:
     clean_session: true
     client_id: ""                 # 비우면 코드가 자동 생성(지속 세션 필요시 지정)
   local_mqtt:
-    host: "127.0.0.1"
+    host: "core-mosquitto"
     port: 1883
-    topic_prefix: ""
+    topic_prefix: "dxsafety"
     qos: 1
     retain: true
+    enabled: true
   homeassistant_api:
     token: ""                     # Supervisor 토큰 사용 시 비워둘 수 있음
-    url: "http://homeassistant:8123"
+    url: "http://supervisor/core"
     timeout: 30
   policy:
     default_location: "zone.home"
@@ -92,6 +93,7 @@ schema:
     topic_prefix: str
     qos: int
     retain: bool
+    enabled: bool
   homeassistant_api:
     token: password?
     url: url

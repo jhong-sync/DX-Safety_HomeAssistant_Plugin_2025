@@ -2,6 +2,9 @@ from pydantic import BaseModel
 from typing import Optional
 import os
 import json
+from app.observability.logger import get_logger
+
+log = get_logger()
 
 
 class RemoteMqtt(BaseModel):
@@ -83,5 +86,15 @@ class Settings(BaseModel):
         path = os.getenv("HA_OPTIONS_PATH", "/data/options.json")
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
+        
+        # Home Assistant 환경에서 Supervisor 토큰 자동 감지
+        if not data.get("homeassistant_api", {}).get("token"):
+            supervisor_token = os.getenv("SUPERVISOR_TOKEN")
+            if supervisor_token:
+                if "homeassistant_api" not in data:
+                    data["homeassistant_api"] = {}
+                data["homeassistant_api"]["token"] = supervisor_token
+                log.info("Supervisor 토큰이 자동으로 설정되었습니다")
+        
         return Settings(**data)
 
