@@ -53,6 +53,7 @@ class Reliability(BaseModel):
 class Settings(BaseModel):
     # 상위 플래그(옵션)
     dry_run: bool = False
+    rollback_mode: bool = False
 
     # 하위 섹션 (기본값/팩토리로 누락 방지)
     remote_mqtt: RemoteMQTT = Field(default_factory=RemoteMQTT)
