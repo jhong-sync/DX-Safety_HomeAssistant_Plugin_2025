@@ -43,10 +43,7 @@ class TTSEngine:
         self.voice_queue: asyncio.Queue = asyncio.Queue()
         self.is_running = False
         
-        log.info("TTS 엔진 초기화됨", 
-                default_voice=default_voice,
-                media_player=media_player_entity,
-                tts_service=tts_service)
+        log.info("TTS 엔진 초기화됨")
     
     async def start(self) -> None:
         """TTS 엔진을 시작합니다."""
