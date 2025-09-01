@@ -10,7 +10,7 @@ import time
 from typing import Optional
 from app.observability.logger import get_logger
 
-log = get_logger()
+log = get_logger("dxsafety.idem")
 
 # SQLite 스키마
 SCHEMA = """

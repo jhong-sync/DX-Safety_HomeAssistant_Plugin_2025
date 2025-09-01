@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Tuple
 from app.observability.logger import get_logger
 from app.common.retry import retry_with_backoff
 
-log = get_logger()
+log = get_logger("dxsafety.ha")
 
 class HAClient:
     """Home Assistant API 클라이언트"""

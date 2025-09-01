@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Optional, List
 from app.observability.logger import get_logger
 
-log = get_logger()
+log = get_logger("dxsafety.outbox")
 
 # SQLite 스키마
 SCHEMA = """

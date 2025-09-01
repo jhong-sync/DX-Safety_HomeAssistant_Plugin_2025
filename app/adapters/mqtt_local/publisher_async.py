@@ -13,7 +13,7 @@ from app.adapters.storage.sqlite_outbox import SQLiteOutbox
 from app.common.retry import exponential_backoff
 from app.observability.logger import get_logger
 
-log = get_logger()
+log = get_logger("dxsafety.mqtt_local")
 
 class LocalMqttPublisher:
     """로컬 MQTT 발송 어댑터 (Outbox 패턴)"""

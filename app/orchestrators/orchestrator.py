@@ -22,7 +22,7 @@ from app.ports.ingest import AlertIngestPort
 from app.observability import metrics
 from app.observability.logger import get_logger
 
-log = get_logger()
+log = get_logger("dxsafety.orchestrator")
 
 class Orchestrator:
     """오케스트레이터 (TTS & 음성 알림)"""

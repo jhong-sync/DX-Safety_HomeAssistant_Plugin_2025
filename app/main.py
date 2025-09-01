@@ -5,6 +5,7 @@ import uvicorn
 from app.adapters.tts.engine import TTSEngine
 from app.settings import Settings
 from app.observability.health import create_app
+from app.observability.logger import setup_logger, get_logger
 from app.adapters.mqtt_remote.client_async import RemoteMqttIngestor
 from app.adapters.mqtt_local.publisher_async import LocalMqttPublisher
 from app.adapters.storage.sqlite_outbox import SQLiteOutbox
@@ -66,14 +67,23 @@ def build_settings() -> Settings:
 
 async def start_http(settings: Settings) -> Optional[asyncio.Task]:
     if not settings.observability.metrics_enabled: return None
-    # app = create_app(settings)
-    # return asyncio.create_task(uvicorn.Server(
-    #     uvicorn.Config(app, host="0.0.0.0", port=settings.observability.http_port, log_level="info")
-    # ).serve())
+    app = create_app(settings)
+    return asyncio.create_task(uvicorn.Server(
+        uvicorn.Config(app, host="0.0.0.0", port=settings.observability.http_port, log_level="info")
+    ).serve())
 
 async def main():
+    # 로거 초기화 (환경변수 LOG_LEVEL 우선, 없으면 설정 사용)
+    initial_level = os.getenv("LOG_LEVEL", "INFO")
+    setup_logger(level=initial_level)
+    log = get_logger()
+    
     s = build_settings()
-    print(s)
+    # 설정된 로그 레벨로 재설정
+    final_level = getattr(s.observability, "log_level", initial_level)
+    setup_logger(level=final_level)
+    log.info("로거 초기화 완료", level=final_level)
+    log.info("설정 로드 완료")
     ingest = RemoteMqttIngestor(
         host=s.remote_mqtt.host,
         port=s.remote_mqtt.port,
@@ -89,9 +99,11 @@ async def main():
         lwt_qos=s.remote_mqtt.lwt_qos,
         lwt_retain=s.remote_mqtt.lwt_retain,
     )
-    print("finish ingest")
+    log.info("원격 MQTT 인게스터 생성 완료")
+    
     outbox = SQLiteOutbox(s.reliability.outbox_path); await outbox.init()
-    print("finish outbox")
+    log.info("Outbox 초기화 완료", path=s.reliability.outbox_path)
+    
     publisher = LocalMqttPublisher(
         broker_host=s.local_mqtt.host,
         broker_port=s.local_mqtt.port,
@@ -110,30 +122,43 @@ async def main():
         backoff_max=s.reliability.backoff_max_sec,
         max_retries=s.reliability.publish_max_retries,
     )
-    print("finish publisher")
+    log.info("로컬 MQTT 퍼블리셔 생성 완료")
+    
     idem = SQLiteIdemStore(s.reliability.idem_path, s.reliability.idempotency_ttl_sec); await idem.init()
+    log.info("Idempotency 저장소 초기화 완료", path=s.reliability.idem_path)
+    
     ha = HAClient(
         base_url=s.ha.base_url,
         token=s.ha.token,
         timeout=10
     )
-    print("finish ha")
+    log.info("Home Assistant 클라이언트 생성 완료", base_url=s.ha.base_url)
+    
     tts_engine = TTSEngine(
         ha_client=ha,
         default_voice=s.tts.voice_language
-    )
-
+        )
+    log.info("TTS 엔진 생성 완료", voice_enabled=s.tts.enabled)
+    
     # HA 좌표 실패 시 자동 폴백(운영 친화)
     try:
         async with ha:
             coords = await ha.get_zone_home()
             if not coords:
                 s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
-    except Exception:
+                log.warning("HA 홈 좌표를 가져올 수 없음, 정책 모드 OR로 폴백")
+            else:
+                log.info("HA 홈 좌표 조회 성공", lat=coords[0], lon=coords[1])
+    except Exception as e:
         s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
+        log.warning("HA 좌표 조회 실패, 정책 모드 OR로 폴백", error=str(e))
 
     orch = Orchestrator(ingest, publisher, idem, ha, tts_engine, severity_threshold=s.geopolicy.severity_threshold, distance_threshold_km=s.geopolicy.distance_km_threshold, polygon_buffer_km=s.geopolicy.polygon_buffer_km, policy_mode=s.geopolicy.mode, voice_enabled=s.tts.enabled, voice_language=s.tts.voice_language, queue_maxsize=s.reliability.queue_maxsize)
+    log.info("오케스트레이터 생성 완료")
+    
     http_task = await start_http(s)
+    if http_task:
+        log.info("HTTP 서버 시작됨", port=s.observability.http_port)
 
     stop = asyncio.Future()
     try:
@@ -143,6 +168,7 @@ async def main():
             except NotImplementedError: pass
     except RuntimeError: pass
 
+    log.info("오케스트레이터 시작")
     orch_task = asyncio.create_task(orch.start())
     await stop
     orch_task.cancel()

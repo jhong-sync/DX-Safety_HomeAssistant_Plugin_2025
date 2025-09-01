@@ -11,7 +11,7 @@ from typing import AsyncIterator, Dict
 from aiomqtt import Client, MqttError
 from app.observability.logger import get_logger
 
-log = get_logger()
+log = get_logger("dxsafety.mqtt_remote")
 
 class RemoteMqttIngestor:
     """원격 MQTT 수집 어댑터"""

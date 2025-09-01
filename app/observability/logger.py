@@ -78,7 +78,13 @@ def get_logger(name: str = "dxsafety") -> logging.Logger:
     Returns:
         로거 인스턴스
     """
-    return logging.getLogger(name)
+    logger = logging.getLogger(name)
+    
+    # 로거가 핸들러가 없으면 기본 설정으로 초기화
+    if not logger.handlers:
+        setup_logger(name, "INFO")
+    
+    return logger
 
 def log_with_context(logger: logging.Logger, level: str, message: str, **kwargs):
     """
