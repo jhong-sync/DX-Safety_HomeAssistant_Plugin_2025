@@ -16,7 +16,7 @@ from app.core.voice_template import create_voice_message
 from app.adapters.storage.sqlite_idem import SQLiteIdemStore
 from app.adapters.storage.sqlite_outbox import SQLiteOutbox
 from app.adapters.mqtt_local.publisher_async import LocalMqttPublisher
-from app.adapters.homeassistant.client import HomeAssistantClient
+from app.adapters.homeassistant.client import HAClient
 from app.adapters.tts.engine import TTSEngine
 from app.ports.ingest import AlertIngestPort
 from app.observability import metrics
@@ -31,7 +31,7 @@ class Orchestrator:
                  ingest: AlertIngestPort, 
                  publisher: LocalMqttPublisher, 
                  idem: SQLiteIdemStore,
-                 ha_client: HomeAssistantClient,
+                 ha_client: HAClient,
                  tts_engine: TTSEngine,
                  *,
                  severity_threshold: str,

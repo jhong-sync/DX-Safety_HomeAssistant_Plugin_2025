@@ -13,7 +13,7 @@ from app.common.retry import retry_with_backoff
 
 log = get_logger()
 
-class HomeAssistantClient:
+class HAClient:
     """Home Assistant API 클라이언트"""
     
     def __init__(self, 

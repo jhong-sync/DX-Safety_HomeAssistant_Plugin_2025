@@ -15,7 +15,7 @@ from app.core.geo_policy import evaluate_geographic_policy, evaluate_simple_poli
 from app.adapters.storage.sqlite_idem import SQLiteIdemStore
 from app.adapters.storage.sqlite_outbox import SQLiteOutbox
 from app.adapters.mqtt_local.publisher_async import LocalMqttPublisher
-from app.adapters.homeassistant.client import HomeAssistantClient
+from app.adapters.homeassistant.client import HAClient
 from app.ports.ingest import AlertIngestPort
 from app.observability import metrics
 from app.observability.logger import get_logger
@@ -29,7 +29,7 @@ class OrchestratorP4:
                  ingest: AlertIngestPort, 
                  publisher: LocalMqttPublisher, 
                  idem: SQLiteIdemStore,
-                 ha_client: HomeAssistantClient,
+                 ha_client: HAClient,
                  *,
                  severity_threshold: str,
                  distance_threshold_km: float = 5.0,

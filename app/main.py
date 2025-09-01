@@ -8,7 +8,7 @@ from app.adapters.mqtt_local.publisher_async import LocalMqttPublisher
 from app.adapters.storage.sqlite_outbox import SQLiteOutbox
 from app.adapters.storage.sqlite_idem import SQLiteIdemStore
 from app.adapters.homeassistant.client import HAClient
-from app.orchestrators.orchestrator import OrchestratorP5  # 리네임된 P5
+from app.orchestrators.orchestrator import Orchestrator  # 리네임된 P5
 
 def _b(name, default=False): return os.getenv(name, str(default)).lower() in ("1","true","yes","on")
 
@@ -67,7 +67,7 @@ async def main():
     except Exception:
         s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
 
-    orch = OrchestratorP5(ingest, publisher, idem, ha, s)
+    orch = Orchestrator(ingest, publisher, idem, ha, s)
     http_task = await start_http(s)
 
     stop = asyncio.Future()

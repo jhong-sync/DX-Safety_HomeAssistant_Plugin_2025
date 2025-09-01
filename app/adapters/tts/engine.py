@@ -8,7 +8,7 @@ alert messages to speech and playing them through Home Assistant.
 import asyncio
 from typing import Dict, Optional, List
 from app.observability.logger import get_logger
-from app.adapters.homeassistant.client import HomeAssistantClient
+from app.adapters.homeassistant.client import HAClient
 from app.common.retry import retry_with_backoff
 
 log = get_logger()
@@ -17,7 +17,7 @@ class TTSEngine:
     """TTS 엔진"""
     
     def __init__(self, 
-                 ha_client: HomeAssistantClient,
+                 ha_client: HAClient,
                  *,
                  default_voice: str = "ko-KR",
                  default_volume: float = 0.8,

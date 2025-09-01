@@ -15,7 +15,7 @@ from app.common.geo import (
 )
 from app.core.geo_policy import evaluate_geographic_policy, evaluate_simple_policy
 from app.core.models import CAE, Area, Geometry
-from app.adapters.homeassistant.client import HomeAssistantClient
+from app.adapters.homeassistant.client import HAClient
 
 def test_haversine_distance():
     """Haversine 거리 계산 테스트"""
