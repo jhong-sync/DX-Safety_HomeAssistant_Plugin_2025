@@ -80,9 +80,6 @@ async def main():
     
     s = build_settings()
     # 설정된 로그 레벨로 재설정
-    final_level = getattr(s.observability, "log_level", initial_level)
-    setup_logger(level=final_level)
-    log.info("로거 초기화 완료", level=final_level)
     log.info("설정 로드 완료")
     ingest = RemoteMqttIngestor(
         host=s.remote_mqtt.host,
