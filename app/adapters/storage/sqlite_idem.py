@@ -41,7 +41,7 @@ class SQLiteIdemStore:
         async with aiosqlite.connect(self.path) as db:
             await db.executescript(SCHEMA)
             await db.commit()
-        log.info(f"SQLiteIdemStore 스키마 초기화 완료: {self.path}")
+        log.info(f"SQLiteIdemStore 스키마 초기화 완료")
     
     async def add_if_absent(self, key: str) -> bool:
         """

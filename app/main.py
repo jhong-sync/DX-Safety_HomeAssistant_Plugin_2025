@@ -151,7 +151,7 @@ async def main():
     
     http_task = await start_http(s)
     if http_task:
-        log.info("HTTP 서버 시작됨", port=s.observability.http_port)
+        log.info("HTTP 서버 시작됨")
 
     stop = asyncio.Future()
     try:

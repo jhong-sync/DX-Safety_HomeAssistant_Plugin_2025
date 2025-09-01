@@ -121,11 +121,11 @@ class HAClient:
                         "radius": state.get("attributes", {}).get("radius")
                     })
             
-            log.info("zone 목록 가져옴", count=len(zones))
+            log.info("zone 목록 가져옴")
             return zones
             
         except Exception as e:
-            log.error("zone 목록 가져오기 실패", error=str(e))
+            log.error("zone 목록 가져오기 실패")
             return []
     
     async def get_device_states(self, device_ids: List[str]) -> Dict[str, Dict]:
