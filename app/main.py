@@ -99,7 +99,6 @@ async def main():
     log.info("원격 MQTT 인게스터 생성 완료")
     
     outbox = SQLiteOutbox(s.reliability.outbox_path); await outbox.init()
-    log.info("Outbox 초기화 완료", path=s.reliability.outbox_path)
     
     publisher = LocalMqttPublisher(
         broker_host=s.local_mqtt.host,
@@ -122,20 +121,17 @@ async def main():
     log.info("로컬 MQTT 퍼블리셔 생성 완료")
     
     idem = SQLiteIdemStore(s.reliability.idem_path, s.reliability.idempotency_ttl_sec); await idem.init()
-    log.info("Idempotency 저장소 초기화 완료", path=s.reliability.idem_path)
     
     ha = HAClient(
         base_url=s.ha.base_url,
         token=s.ha.token,
         timeout=10
     )
-    log.info("Home Assistant 클라이언트 생성 완료", base_url=s.ha.base_url)
     
     tts_engine = TTSEngine(
         ha_client=ha,
         default_voice=s.tts.voice_language
         )
-    log.info("TTS 엔진 생성 완료", voice_enabled=s.tts.enabled)
     
     # HA 좌표 실패 시 자동 폴백(운영 친화)
     try:
