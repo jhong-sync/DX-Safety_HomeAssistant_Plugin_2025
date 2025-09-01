@@ -9,11 +9,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # python + venv
 RUN apk add --no-cache python3 py3-pip \
  && python3 -m venv /opt/venv \
- && pip install --no-cache-dir --upgrade pip
+ && /opt/venv/bin/pip install --no-cache-dir --upgrade pip
 
-# 파이썬 의존성
+# 파이썬 의존성 (venv에 설치)
 COPY requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+RUN /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 
 # 앱 파일
 WORKDIR /opt/app
