@@ -14,6 +14,10 @@ class MqttPublisher:
         self._connected = False
         self._connection_task = None
         
+        # MQTT 콜백 설정
+        self.client.on_connect = self._on_connect
+        self.client.on_disconnect = self._on_disconnect
+        
         # 설정에서 재시도 옵션 가져오기
         reliability_cfg = getattr(cfg, 'reliability', None)
         if reliability_cfg:
@@ -35,6 +39,20 @@ class MqttPublisher:
         
         # 연결을 지연시켜 서비스 준비 시간을 줍니다
         self._connection_task = asyncio.create_task(self._connect_with_retry())
+    
+    def _on_connect(self, client, userdata, flags, rc):
+        """MQTT 연결 콜백"""
+        if rc == 0:
+            self._connected = True
+            log.info("MQTT Publisher 연결 성공")
+        else:
+            self._connected = False
+            log.error(f"MQTT Publisher 연결 실패: {rc}")
+    
+    def _on_disconnect(self, client, userdata, rc):
+        """MQTT 연결 해제 콜백"""
+        self._connected = False
+        log.info(f"MQTT Publisher 연결 해제: {rc}")
     
     async def _connect_with_retry(self):
         """MQTT 연결을 재시도하면서 연결합니다."""
@@ -90,14 +108,6 @@ class MqttPublisher:
         payload = json.dumps({"headline": cae["headline"], "severity": cae["severity"]}, ensure_ascii=False)
         
         try:
-            # 연결 상태 재확인
-            if not self.client.is_connected():
-                log.warning("MQTT 클라이언트 연결 끊어짐 - 재연결 시도")
-                await self._connect_with_retry()
-                if not self.client.is_connected():
-                    log.error("MQTT 재연결 실패 - 발행 건너뜀")
-                    return
-            
             result = self.client.publish(topic, payload=payload, qos=self.cfg.qos, retain=self.cfg.retain)
             if result.rc != mqtt.MQTT_ERR_SUCCESS:
                 log.error(f"MQTT 발행 실패: {result.rc}")
