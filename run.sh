@@ -90,6 +90,7 @@ export BACKOFF_MAX_SEC="$(bashio::config 'reliability.max_delay')"
 # 운영 플래그
 export DRY_RUN="false"
 export ROLLBACK_MODE="false"
+export PYTHONPATH="/opt/app"
 
 # ---------- 실행 ----------
-exec python3 -m app.orchestrator
+exec python3 -m app.main

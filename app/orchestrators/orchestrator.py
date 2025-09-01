@@ -24,7 +24,7 @@ from app.observability.logger import get_logger
 
 log = get_logger()
 
-class OrchestratorP5:
+class Orchestrator:
     """Phase 5 오케스트레이터 (TTS & 음성 알림)"""
     
     def __init__(self, 
