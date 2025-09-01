@@ -73,6 +73,7 @@ async def start_http(settings: Settings) -> Optional[asyncio.Task]:
 
 async def main():
     s = build_settings()
+    print(s)
     ingest = RemoteMqttIngestor(
         host=s.remote_mqtt.host,
         port=s.remote_mqtt.port,
@@ -88,8 +89,9 @@ async def main():
         lwt_qos=s.remote_mqtt.lwt_qos,
         lwt_retain=s.remote_mqtt.lwt_retain,
     )
-
+    print("finish ingest")
     outbox = SQLiteOutbox(s.reliability.outbox_path); await outbox.init()
+    print("finish outbox")
     publisher = LocalMqttPublisher(
         broker_host=s.local_mqtt.host,
         broker_port=s.local_mqtt.port,
@@ -108,12 +110,14 @@ async def main():
         backoff_max=s.reliability.backoff_max_sec,
         max_retries=s.reliability.publish_max_retries,
     )
+    print("finish publisher")
     idem = SQLiteIdemStore(s.reliability.idem_path, s.reliability.idempotency_ttl_sec); await idem.init()
     ha = HAClient(
         base_url=s.ha.base_url,
         token=s.ha.token,
         timeout=10
     )
+    print("finish ha")
     tts_engine = TTSEngine(
         ha_client=ha,
         default_voice=s.tts.voice_language
