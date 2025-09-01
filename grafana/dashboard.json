@@ -1,0 +1,227 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "DX-Safety Alert Processing",
+    "tags": ["dxsafety", "alerts", "monitoring"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Alert Processing Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(alerts_received_total[5m])",
+            "legendFormat": "Received"
+          },
+          {
+            "expr": "rate(alerts_valid_total[5m])",
+            "legendFormat": "Valid"
+          },
+          {
+            "expr": "rate(alerts_triggered_total[5m])",
+            "legendFormat": "Triggered"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "palette-classic"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 0
+        }
+      },
+      {
+        "id": 2,
+        "title": "Processing Latency",
+        "type": "heatmap",
+        "targets": [
+          {
+            "expr": "rate(end_to_end_duration_seconds_bucket[5m])",
+            "legendFormat": "{{le}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "id": 3,
+        "title": "Queue Depth",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "internal_queue_depth",
+            "legendFormat": "Queue Depth"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 1000,
+            "unit": "short",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 500},
+                {"color": "red", "value": 800}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 0,
+          "y": 8
+        }
+      },
+      {
+        "id": 4,
+        "title": "Outbox Size",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "outbox_size",
+            "legendFormat": "Outbox Size"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 100,
+            "unit": "short",
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 50},
+                {"color": "red", "value": 80}
+              ]
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 6,
+          "y": 8
+        }
+      },
+      {
+        "id": 5,
+        "title": "Duplicate Alerts",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "alerts_duplicate_total",
+            "legendFormat": "Duplicates"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "color": {
+              "mode": "thresholds"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 12,
+          "y": 8
+        }
+      },
+      {
+        "id": 6,
+        "title": "Service Uptime",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "uptime_seconds",
+            "legendFormat": "Uptime"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "color": {
+              "mode": "thresholds"
+            }
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 6,
+          "x": 18,
+          "y": 8
+        }
+      },
+      {
+        "id": 7,
+        "title": "Alert Severity Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (severity) (alerts_valid_total)",
+            "legendFormat": "{{severity}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 16
+        }
+      },
+      {
+        "id": 8,
+        "title": "MQTT Reconnects",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(mqtt_reconnects_total[5m])",
+            "legendFormat": "{{client}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short"
+          }
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 16
+        }
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

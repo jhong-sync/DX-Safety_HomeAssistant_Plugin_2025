@@ -1,26 +1,177 @@
-# DX-Safety CAP Ingestor
+# DX-Safety Home Assistant Add-on
 
-Home Assistant Add-on으로 동작하는 CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 서비스입니다.
+🏠 **Home Assistant용 CAP 기반 재난 경보 시스템**
+
+DX-Safety는 Common Alerting Protocol (CAP) 기반의 재난 경보를 수신하고, 지능적으로 필터링하여 Home Assistant에서 실시간 알림을 제공하는 애드온입니다.
 
 ## 주요 기능
-- CAP 메시지 수신: MQTT를 통한 재난 경보 수신
-- 자동 정규화: 다양한 CAP 포맷을 CAE 스키마로 변환/검증
-- 정책 기반 결정: 임계값/영역 규칙에 따른 알림 트리거
-- Home Assistant 연동: 센서 상태 업데이트 및 이벤트 발행
-- 관측성: 헬스 체크와 메트릭 제공(프로메테우스 형식)
-- 테스트 유틸: 샘플 알림 발행(HA 이벤트 또는 HTTP 엔드포인트)
 
-## 노출 센서
-- `sensor.dxsafety_last_headline` — 마지막 알림 헤드라인
-- `sensor.dxsafety_last_level` — 마지막 알림 레벨 (minor/moderate/severe/critical)
-- `sensor.dxsafety_last_intensity` — 마지막 알림 강도
-- `sensor.dxsafety_last_shelter` — 마지막 대피소 이름
+### 실시간 경보 수신
+- **MQTT 기반 CAP 메시지 수신**: 외부 재난 경보 시스템과 실시간 연결
+- **다양한 보안 모드 지원**: None, TLS, mTLS 인증 지원
+- **자동 재연결**: 네트워크 불안정 시 자동 복구
 
-## 테스트 알림
+### 지능형 필터링
+- **지리적 정책**: 설정된 반경 내 경보만 수신
+- **심각도 임계값**: minor/moderate/severe/critical 레벨별 필터링
+- **중복 제거**: 동일 경보의 중복 알림 방지
+- **야간 모드**: 시간대별 알림 제어
 
-1) Home Assistant 이벤트 발행
+### Home Assistant 통합
+- **센서 자동 생성**: 경보 정보를 실시간 센서로 제공
+- **이벤트 발행**: Home Assistant 이벤트 시스템과 연동
+- **자동화 트리거**: 경보 수신 시 자동화 실행
+- **TTS 음성 알림**: 음성으로 경보 내용 안내
 
-Developer Tools > Services에서 아래 서비스/데이터를 호출합니다.
+### 모니터링 & 관찰성
+- **실시간 메트릭**: Prometheus 형식의 성능 지표
+- **구조화된 로깅**: 상세한 운영 로그
+- **헬스 체크**: 서비스 상태 모니터링
+- **웹 대시보드**: Ingress를 통한 관리 인터페이스
+
+## 설치 방법
+
+### 1. 저장소 추가
+Home Assistant 설정 → 애드온 → 애드온 스토어 → 우측 상단 메뉴 → 저장소
+
+```
+https://github.com/jhong-sync/DX-Safety_HomeAssistant_Plugin_2025
+```
+
+### 2. 애드온 설치
+- **DX-Safety CAP Ingestor** 검색 후 설치
+- 설치 완료 후 **시작** 버튼 클릭
+
+### 3. 기본 설정
+설치 후 자동으로 생성되는 센서들:
+- `sensor.dxsafety_last_headline` - 마지막 경보 제목
+- `sensor.dxsafety_last_level` - 마지막 경보 레벨
+- `sensor.dxsafety_last_intensity` - 마지막 경보 강도
+- `sensor.dxsafety_last_shelter` - 마지막 대피소 정보
+
+## 설정 가이드
+
+### 기본 설정 (config.yaml)
+
+```yaml
+# 외부 MQTT 브로커 설정
+remote_mqtt:
+  host: "your-mqtt-broker.com"
+  port: 1883
+  topic: "pws/cap/#"
+  qos: 1
+  security_mode: "none"  # none | tls | mtls
+  username: "your-username"
+  password: "your-password"
+
+# 로컬 MQTT 설정 (Home Assistant Mosquitto)
+local_mqtt:
+  host: "core-mosquitto"  # 자동 설정됨
+  port: 1883
+  topic_prefix: "dxsafety"
+  enabled: true
+
+# 정책 설정
+policy:
+  default_location: "zone.home"
+  lat: 37.5665  # 서울시청 좌표 (예시)
+  lon: 126.9780
+  radius_km_buffer: 10
+  severity_threshold: "moderate"  # minor|moderate|severe|critical
+  night_mode: false
+
+# TTS 음성 알림
+tts:
+  enabled: true
+  topic: "dxsafety/tts"
+  template: "{headline} - {description}"
+  voice_language: "ko-KR"
+
+# 관찰성 설정
+observability:
+  http_port: 8099
+  metrics_enabled: true
+  log_level: "INFO"
+```
+
+### 고급 설정
+
+#### TLS 보안 연결
+```yaml
+remote_mqtt:
+  security_mode: "tls"
+  ca_cert_path: "/ssl/ca.crt"
+  username: "secure-user"
+  password: "secure-password"
+```
+
+#### mTLS 상호 인증
+```yaml
+remote_mqtt:
+  security_mode: "mtls"
+  ca_cert_path: "/ssl/ca.crt"
+  client_cert_path: "/ssl/client.crt"
+  client_key_path: "/ssl/client.key"
+```
+
+## 자동화 예시
+
+### 1. 경보 수신 시 조명 제어
+```yaml
+automation:
+  - alias: "DX-Safety 경보 시 조명 켜기"
+    trigger:
+      platform: event
+      event_type: dxsafety_alert
+    condition:
+      condition: template
+      value_template: "{{ trigger.event.data.level in ['severe', 'critical'] }}"
+    action:
+      - service: light.turn_on
+        target:
+          entity_id: light.living_room
+        data:
+          rgb_color: [255, 0, 0]  # 빨간색
+          brightness: 255
+```
+
+### 2. 음성 알림 자동화
+```yaml
+automation:
+  - alias: "DX-Safety 음성 알림"
+    trigger:
+      platform: event
+      event_type: dxsafety_alert
+    action:
+      - service: tts.cloud_say
+        data:
+          entity_id: media_player.living_room
+          message: "{{ trigger.event.data.headline }} - {{ trigger.event.data.description }}"
+          language: ko
+```
+
+### 3. 대피소 정보 표시
+```yaml
+automation:
+  - alias: "대피소 정보 알림"
+    trigger:
+      platform: state
+      entity_id: sensor.dxsafety_last_shelter
+    condition:
+      condition: not
+      condition: template
+      value_template: "{{ states('sensor.dxsafety_last_shelter') == 'unavailable' }}"
+    action:
+      - service: persistent_notification.create
+        data:
+          title: "대피소 정보"
+          message: "{{ states('sensor.dxsafety_last_shelter') }}"
+```
+
+## 테스트 방법
+
+### 1. Home Assistant 이벤트로 테스트
+개발자 도구 → 서비스에서 다음 호출:
 
 ```yaml
 service: homeassistant.fire_event
@@ -35,142 +186,90 @@ data:
     links: ["https://example.com/test"]
 ```
 
-2) 애드온 HTTP 엔드포인트 (Ingress 경로 하위)
-
-POST `http://<addon-ingress-host>/trigger_test` 를 호출하면 내부적으로 `dxsafety_alert` 이벤트를 발행합니다.
-
-## Helpers 기반 정책 조정(예시)
-
-```yaml
-# 설정 > 기기 & 서비스 > Helpers
-input_number:
-  dxsafety_threshold_minor: 0
-  dxsafety_threshold_moderate: 1
-  dxsafety_threshold_severe: 2
-  dxsafety_threshold_critical: 3
-
-input_select:
-  dxsafety_light_severe_color:
-    name: "Severe 경보 색상"
-    options: ["red", "orange", "yellow"]
-    initial: "red"
-  dxsafety_light_critical_color:
-    name: "Critical 경보 색상"
-    options: ["red", "orange", "yellow"]
-    initial: "red"
-
-input_text:
-  dxsafety_sound_profile_ios:
-    name: "iOS 사운드 프로파일"
-    initial: "default"
-  dxsafety_channel_android:
-    name: "Android 알림 채널"
-    initial: "default"
-```
-
-## Lovelace 커스텀 카드
-
-### 빌드
-
+### 2. HTTP 엔드포인트로 테스트
 ```bash
-cd dxsafety-card
-npm install
-npm run build
+curl -X POST http://your-ha-ip:8099/trigger_test
 ```
-
-빌드된 `dist/dxsafety-card.js`를 Home Assistant의 `/config/www/dxsafety-card/`로 복사합니다.
-
-```yaml
-# configuration.yaml
-lovelace:
-  resources:
-    - url: /local/dxsafety-card/dxsafety-card.js
-      type: module
-```
-
-Lovelace 대시보드에서 다음 카드를 추가합니다.
-
-```yaml
-type: custom:dxsafety-card
-```
-
-## 아키텍처 개요
-
-```
-MQTT Ingestor -> Normalizer -> Policy Engine -> Dispatcher
-      |             |             |              |
-   Raw CAP      CAE Schema     Decision     Home Assistant/MQTT/TTS
-```
-
-주요 컴포넌트
-- `app/ingestion/mqtt_ingestor.py`: MQTT 메시지 수신
-- `app/normalize/normalizer.py`: CAP -> CAE 변환 및 스키마 검증
-- `app/policy/engine.py`: 정책 기반 결정
-- `app/dispatch/ha_client.py`: Home Assistant API 연동
-- `app/dispatch/mqtt_publisher.py`: 로컬 MQTT 발행
-- `app/dispatch/tts.py`: TTS 알림 발송
-
-## 설정
-
-`config.yaml`의 기본 옵션은 다음과 같습니다.
-
-```yaml
-options:
-  remote_mqtt:
-    host: "broker.example.com"
-    port: 1883
-    topic: "pws/cap/#"
-    qos: 1
-    security_mode: "none"   # none | tls | mtls
-
-  local_mqtt:
-    host: "core-mosquitto"
-    port: 1883
-    topic_prefix: "dxsafety"
-
-  policy:
-    default_location: "zone.home"
-    severity_threshold: "moderate"
-
-  observability:
-    http_port: 8099
-    metrics_enabled: true
-```
-
-환경변수
-- `SUPERVISOR_TOKEN`: Home Assistant API 접근 토큰(자동 주입)
-- `HA_OPTIONS_PATH`: 옵션 파일 경로(기본 `/data/options.json`)
-- `MQTT_USERNAME`: Local MQTT 사용자명(기본값: "addons")
-- `MQTT_PASSWORD`: Local MQTT 비밀번호(Home Assistant 환경에서 자동 설정)
-
-**자동 설정 기능:**
-- Home Assistant Add-on 환경에서 실행 시 MQTT 연결 정보가 자동으로 설정됩니다
-- `localhost` → `core-mosquitto`로 자동 변환
-- 빈 사용자명/비밀번호 → Home Assistant 기본 MQTT 계정으로 자동 설정
 
 ## 모니터링
 
-헬스: `http://<addon-ingress-host>/health`
-메트릭: `http://<addon-ingress-host>/metrics`
+### 헬스 체크
+```
+http://your-ha-ip:8099/health
+```
 
-## 배포
+### 메트릭 (Prometheus)
+```
+http://your-ha-ip:8099/metrics
+```
 
-Home Assistant Supervisor에서 리포지토리를 추가하고 애드온을 설치한 뒤 옵션을 구성합니다.
+### 주요 메트릭
+- `dxsafety_alerts_received_total` - 수신된 경보 수
+- `dxsafety_alerts_processed_total` - 처리된 경보 수
+- `dxsafety_queue_depth` - 처리 큐 깊이
+- `dxsafety_processing_duration_seconds` - 처리 시간
 
-## 문제 해결
+## 🔍 문제 해결
 
-1) 센서가 업데이트되지 않음
-- `SUPERVISOR_TOKEN` 확인
-- Home Assistant API 연결 상태 확인
+### 일반적인 문제들
 
-2) 커스텀 카드 로드 실패
-- 파일 경로 및 lovelace 리소스 등록 확인
+#### 1. 센서가 업데이트되지 않음
+- Home Assistant API 토큰 확인
+- 네트워크 연결 상태 확인
+- 로그에서 오류 메시지 확인
 
-## 기여
+#### 2. MQTT 연결 실패
+- 브로커 주소 및 포트 확인
+- 인증 정보 확인
+- 방화벽 설정 확인
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push the branch
-5. Create a Pull Request
+#### 3. 경보가 수신되지 않음
+- 토픽 설정 확인
+- QoS 레벨 확인
+- 보안 설정 확인
+
+### 로그 확인
+```bash
+# 애드온 로그 확인
+docker logs dx_safety
+```
+
+## 아키텍처
+
+```
+외부 CAP 시스템 → MQTT → DX-Safety → Home Assistant
+     ↓              ↓         ↓           ↓
+  재난 경보    실시간 수신   지능형 필터링   자동화/알림
+```
+
+### 핵심 컴포넌트
+- **MQTT Ingestor**: 외부 경보 시스템과 연결
+- **Normalizer**: CAP 메시지를 표준 형식으로 변환
+- **Policy Engine**: 지리적/심각도 기반 필터링
+- **Dispatcher**: Home Assistant 센서/이벤트 업데이트
+- **TTS Engine**: 음성 알림 생성
+
+## 기여하기
+
+1. 저장소를 포크합니다
+2. 기능 브랜치를 생성합니다 (`git checkout -b feature/amazing-feature`)
+3. 변경사항을 커밋합니다 (`git commit -m 'Add amazing feature'`)
+4. 브랜치에 푸시합니다 (`git push origin feature/amazing-feature`)
+5. Pull Request를 생성합니다
+
+## 라이선스
+
+이 프로젝트는 MIT 라이선스 하에 배포됩니다.
+
+## 지원
+
+- **이슈 리포트**: [GitHub Issues](https://github.com/jhong-sync/DX-Safety_HomeAssistant_Plugin_2025/issues)
+- **문서**: [Wiki](https://github.com/jhong-sync/DX-Safety_HomeAssistant_Plugin_2025/wiki)
+- **이메일**: jahong215@synctechno.com
+
+---
+
+**버전**: 0.1.3  
+**Home Assistant 최소 버전**: 2024.6.0  
+**Python 버전**: 3.11+
 

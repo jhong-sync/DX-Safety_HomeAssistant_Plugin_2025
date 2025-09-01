@@ -41,6 +41,23 @@ class HomeAssistantAPI(BaseModel):
     timeout: int = 30
 
 
+class HAConfig(BaseModel):
+    base_url: str = "http://supervisor/core/api"  # add-on 내부에서 supervisor 경유 가능
+    token: str = ""  # Hass long-lived token or supervisor auto token
+    timeout_sec: int = 3
+    # 센서 업데이트 옵션
+    publish_sensors: bool = False
+    sensor_prefix: str = "sensor.dxsafety"
+
+
+class GeoPolicy(BaseModel):
+    mode: str = "AND"        # "AND" => severity & geo 모두 충족, "OR" => 둘 중 하나
+    severity_threshold: str = "moderate"
+    distance_km_threshold: float = 5.0  # home과 이벤트 영역의 최소 거리 기준
+    polygon_buffer_km: float = 0.0      # (선택) 폴리곤 경계에 버퍼 적용
+    use_shapely: bool = False
+
+
 class Policy(BaseModel):
     default_location: str
     lat: Optional[float] = None
@@ -60,23 +77,44 @@ class Observability(BaseModel):
     http_port: int = 8099
     metrics_enabled: bool = True
     log_level: str = "INFO"
+    service_name: str = "dxsafety-addon"
+    build_version: str = "phase3"
+    build_date: str = "2025-01-01"
 
 
 class Reliability(BaseModel):
+    # Idempotency 설정
     idempotency_ttl_sec: int = 86400
+    idempotency_db_path: str = "/data/idem.db"
+    
+    # Outbox 설정
+    outbox_db_path: str = "/data/outbox.db"
+    outbox_max_retries: int = 10
+    outbox_retry_interval_sec: float = 5.0
+    
+    # MQTT 공통 설정
     reconnect_max_backoff_sec: int = 120
+    keepalive_sec: int = 30
+    clean_session: bool = False
+    
     # 재시도 설정
     max_retries: int = 5
     initial_delay: float = 1.0
     max_delay: float = 120.0
     backoff_factor: float = 2.0
     jitter: bool = True
+    
+    # 백프레셔 설정
+    queue_maxsize: int = 1000
+    drop_on_full: bool = False
 
 
 class Settings(BaseModel):
     remote_mqtt: RemoteMqtt
     local_mqtt: LocalMqtt
     homeassistant_api: HomeAssistantAPI
+    ha: HAConfig = HAConfig()
+    geopolicy: GeoPolicy = GeoPolicy()
     policy: Policy
     tts: TTS
     observability: Observability

@@ -1,165 +1,87 @@
-import asyncio
-import argparse
-import os
+# app/main.py
+import os, asyncio, signal
+from typing import Optional
 from app.settings import Settings
-from app.observability.logger import get_logger
-from app.observability.health import start_health_server
-from app.observability.metrics import Metrics
-from app.ingestion.mqtt_ingestor import MqttIngestor
-from app.normalize.normalizer import Normalizer
-from app.policy.engine import PolicyEngine
-from app.dedup.store import DedupStore
-from app.dispatch.mqtt_publisher import MqttPublisher
-from app.dispatch.ha_client import HAClient
-from app.dispatch.tts import TTSDispatcher
-from app.utils.env_checker import log_environment_summary
+from app.observability.health import create_app
+from app.adapters.mqtt_remote.client_async import RemoteMqttIngestor
+from app.adapters.mqtt_local.publisher_async import LocalMqttPublisher
+from app.adapters.storage.sqlite_outbox import SQLiteOutbox
+from app.adapters.storage.sqlite_idem import SQLiteIdemStore
+from app.adapters.homeassistant.client import HAClient
+from app.orchestrators.orchestrator import OrchestratorP5  # 리네임된 P5
 
-log = get_logger()
+def _b(name, default=False): return os.getenv(name, str(default)).lower() in ("1","true","yes","on")
 
-async def update_dxsafety_sensors(ha_client: HAClient, cae: dict, decision):
-    """DX-Safety 상태 센서들을 업데이트합니다."""
-    try:
-        # 마지막 알림 헤드라인
-        await ha_client.set_state(
-            "sensor.dxsafety_last_headline",
-            cae.get("headline", "Unknown"),
-            {"friendly_name": "DX-Safety Last Headline", "icon": "mdi:alert-circle"}
-        )
-        
-        # 마지막 알림 레벨
-        await ha_client.set_state(
-            "sensor.dxsafety_last_level",
-            decision.level,
-            {"friendly_name": "DX-Safety Last Level", "icon": "mdi:signal"}
-        )
-        
-        # 마지막 알림 강도
-        await ha_client.set_state(
-            "sensor.dxsafety_last_intensity",
-            cae.get("intensity_value", "Unknown"),
-            {"friendly_name": "DX-Safety Last Intensity", "icon": "mdi:gauge"}
-        )
-        
-        # 마지막 대피소 정보
-        shelter_name = "Unknown"
-        if "shelter" in cae and isinstance(cae["shelter"], dict):
-            shelter_name = cae["shelter"].get("name", "Unknown")
-        elif "shelter" in cae and isinstance(cae["shelter"], str):
-            shelter_name = cae["shelter"]
-            
-        await ha_client.set_state(
-            "sensor.dxsafety_last_shelter",
-            shelter_name,
-            {"friendly_name": "DX-Safety Last Shelter", "icon": "mdi:home-city"}
-        )
-        
-        log.info("DX-Safety sensors updated successfully")
-    except Exception as e:
-        log.error(f"Failed to update DX-Safety sensors: {e}")
+def build_settings() -> Settings:
+    s = Settings()
+    s.dry_run = _b("DRY_RUN", getattr(s, "dry_run", False))
+    setattr(s, "rollback_mode", _b("ROLLBACK_MODE", False))
+    s.remote_mqtt.host = os.getenv("REMOTE_MQTT_HOST", s.remote_mqtt.host)
+    s.remote_mqtt.port = int(os.getenv("REMOTE_MQTT_PORT", s.remote_mqtt.port))
+    s.local_mqtt.host  = os.getenv("LOCAL_MQTT_HOST", s.local_mqtt.host)
+    s.local_mqtt.port  = int(os.getenv("LOCAL_MQTT_PORT", s.local_mqtt.port))
+    s.geopolicy.mode = os.getenv("GEO_MODE", s.geopolicy.mode)
+    s.geopolicy.severity_threshold = os.getenv("SEVERITY_THRESHOLD", s.geopolicy.severity_threshold)
+    s.geopolicy.distance_km_threshold = float(os.getenv("DISTANCE_KM_THRESHOLD", s.geopolicy.distance_km_threshold))
+    s.ha.base_url = os.getenv("HA_BASE_URL", s.ha.base_url)
+    s.ha.token = os.getenv("HA_TOKEN", s.ha.token)
+    s.observability.metrics_enabled = _b("METRICS_ENABLED", s.observability.metrics_enabled)
+    s.observability.http_port = int(os.getenv("METRICS_PORT", s.observability.http_port))
+    return s
 
-async def send_test_alert(ha_client: HAClient):
-    """테스트 알림을 발행합니다."""
-    try:
-        test_event = {
-            "event_type": "dxsafety_alert",
-            "payload": {
-                "headline": "테스트 재난 경보",
-                "description": "이것은 테스트용 재난 경보입니다.",
-                "intensity_value": "moderate",
-                "level": "moderate",
-                "shelter": {"name": "테스트 대피소"},
-                "links": ["https://example.com/test"]
-            }
-        }
-        
-        # Home Assistant 이벤트 발행
-        success = await ha_client.call_service(
-            "homeassistant", "fire_event",
-            {"event_type": "dxsafety_alert", "event_data": test_event["payload"]}
-        )
-        
-        if success:
-            log.info("Test alert sent successfully")
-            return True
-        else:
-            log.error("Failed to send test alert")
-            return False
-            
-    except Exception as e:
-        log.error(f"Error sending test alert: {e}")
-        return False
+async def start_http(settings: Settings) -> Optional[asyncio.Task]:
+    if not settings.observability.metrics_enabled: return None
+    import uvicorn
+    app = create_app(settings)
+    return asyncio.create_task(uvicorn.Server(
+        uvicorn.Config(app, host="0.0.0.0", port=settings.observability.http_port, log_level="info")
+    ).serve())
 
 async def main():
-    # 명령행 인수 파싱
-    parser = argparse.ArgumentParser(description="DX-Safety Home Assistant Plugin")
-    parser.add_argument("--test", action="store_true", help="테스트 모드로 실행 (test_config.json 사용)")
-    args = parser.parse_args()
-    
-    # 테스트 모드인지 확인
-    if args.test:
-        log.info("테스트 모드로 실행 중...")
-        # 테스트 모드일 때는 test_config.json 사용
-        os.environ["HA_OPTIONS_PATH"] = "test_config.json"
-    
-    cfg = Settings.load()
-    metrics = Metrics(enabled=cfg.observability.metrics_enabled)
+    s = build_settings()
 
-    # 환경 설정 정보 로그 출력
-    log_environment_summary()
-
-    dedup = DedupStore(ttl=cfg.reliability.idempotency_ttl_sec)
-    normalizer = Normalizer()
-    policy = PolicyEngine(cfg)
-
-    # MQTT Publisher 조건부 초기화
-    local_pub = None
-    if cfg.local_mqtt.enabled:
-        local_pub = MqttPublisher(cfg.local_mqtt, metrics)
-        log.info("[Local MQTT] Publisher 초기화됨")
-    else:
-        log.info("[Local MQTT] Publisher 비활성화됨")
-    
-    ha_client = HAClient(
-        timeout=cfg.homeassistant_api.timeout,
-        base_url=cfg.homeassistant_api.url,
-        token=cfg.homeassistant_api.token or None,
+    ingest = RemoteMqttIngestor(
+        host=s.remote_mqtt.host, port=s.remote_mqtt.port, topic=s.remote_topic,
+        username=s.remote_mqtt.username, password=s.remote_mqtt.password,
+        tls=s.remote_mqtt.tls, client_id=s.remote_mqtt.client_id,
+        keepalive=s.remote_mqtt.keepalive, clean_session=s.remote_mqtt.clean_session,
+        lwt_topic=s.remote_mqtt.lwt_topic, lwt_payload=s.remote_mqtt.lwt_payload,
+        lwt_qos=s.remote_mqtt.lwt_qos, lwt_retain=s.remote_mqtt.lwt_retain,
     )
-    
-    # Expose simple test endpoint via ingress server
-    async def _trigger_test():
-        return await send_test_alert(ha_client)
-    await start_health_server(port=cfg.observability.http_port, metrics=metrics, on_trigger_test=_trigger_test)
-    
-    tts = TTSDispatcher(cfg.tts, local_pub)
+    outbox = SQLiteOutbox(s.reliability.outbox_path); await outbox.init()
+    publisher = LocalMqttPublisher(
+        broker_host=s.local_mqtt.host, broker_port=s.local_mqtt.port, topic_prefix=s.local_mqtt.local_topic_prefix if hasattr(s.local_mqtt,'local_topic_prefix') else s.local_mqtt.host,
+        outbox=outbox, username=s.local_mqtt.username, password=s.local_mqtt.password,
+        tls=s.local_mqtt.tls, client_id=s.local_mqtt.client_id, keepalive=s.local_mqtt.keepalive,
+        lwt_topic=s.local_mqtt.lwt_topic, lwt_payload_online="online",
+        qos_default=1, retain_default=False,
+        backoff_initial=s.reliability.backoff_initial_sec, backoff_max=s.reliability.backoff_max_sec,
+        max_retries=s.reliability.publish_max_retries,
+    )
+    idem = SQLiteIdemStore(s.reliability.idem_path, s.reliability.idempotency_ttl_sec); await idem.init()
+    ha = HAClient(s)
 
-    async def handle_raw(msg_bytes: bytes, topic: str):
-        metrics.alerts_received_total.inc()
-        try:
-            cae = normalizer.to_cae(msg_bytes)
-            log.info({"msg": "normalized_cae", "eventId": cae["eventId"], "sentAt": cae["sentAt"]})
-            metrics.alerts_valid_total.inc()
-            if not dedup.accept(cae["eventId"], cae["sentAt"]):
-                log.info({"msg": "duplicate_suppressed", "eventId": cae["eventId"]})
-                return
-            decision = policy.evaluate(cae)
-            if not decision.trigger:
-                log.info({"msg": "policy_not_triggered", "eventId": cae["eventId"]})
-                return
-            # Dispatch
-            if local_pub:
-                await local_pub.publish_alert(cae, decision)
-            await ha_client.trigger(decision)
-            await tts.maybe_say(cae, decision)
-            
-            # DX-Safety 상태 센서 업데이트
-            await update_dxsafety_sensors(ha_client, cae, decision)
-            
-            metrics.alerts_triggered_total.inc()
-        except Exception as e:
-            log.exception("processing_error", extra={"err": str(e)})
+    # HA 좌표 실패 시 자동 폴백(운영 친화)
+    try:
+        await ha.get_home_location_cached(ttl_sec=300)
+    except Exception:
+        s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
 
-    ingestor = MqttIngestor(cfg.remote_mqtt, on_message=handle_raw, metrics=metrics)
-    await ingestor.run()
+    orch = OrchestratorP5(ingest, publisher, idem, ha, s)
+    http_task = await start_http(s)
+
+    stop = asyncio.Future()
+    try:
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGTERM, signal.SIGINT):
+            try: loop.add_signal_handler(sig, lambda: (not stop.done()) and stop.set_result(True))
+            except NotImplementedError: pass
+    except RuntimeError: pass
+
+    orch_task = asyncio.create_task(orch.start())
+    await stop
+    orch_task.cancel()
+    if http_task: http_task.cancel()
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,30 +1,28 @@
-name: DX-Safety CAP Ingestor
-version: "0.1.19"
+name: DX-Safety CAP 처리기
+version: "0.1.20"
 slug: dx_safety
 description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
-arch:
-  - amd64
-  - aarch64
+arch: [amd64, aarch64]
 startup: services
 boot: auto
 init: false
 stage: experimental
-homeassistant: "2024.6.0"
-homeassistant_api: true     # ← Core API(http://supervisor/core) 접근 허용
-hassio_api: false           # ← Supervisor API가 필요하면 true로
 
-# Ingress UI
+homeassistant: "2024.6.0"
+homeassistant_api: true     # Core API(http://supervisor/core) 접근 허용
+hassio_api: false           # Supervisor API 필요 시 true
+
+# Ingress UI -> 내부 FastAPI(/, /health, /metrics) 노출
 ingress: true
-ingress_port: 8099          # 컨테이너 내부 HTTP 포트
+ingress_port: 8099
 ingress_entry: "/"
 panel_title: "DX-Safety"
 panel_icon: "mdi:shield-alert"
-# Ingress에서는 일반 포트 매핑 불필요(ports 키 X)
 
-# 헬스 체크(워치독): 컨테이너 내부 헬스엔드포인트
-watchdog: "http://[HOST]:8099/healthz"
+# 헬스 체크(워치독)
+watchdog: "http://[HOST]:8099/health"
 
-# Home Assistant 공유 디렉토리 마운트
+# 공유 디렉토리
 map:
   - "share:rw"
   - "ssl:ro"
@@ -39,34 +37,34 @@ options:
     port: 1883
     topic: "pws/cap/#"
     qos: 1
-    security_mode: "none"         # none | tls | mtls
-    ca_cert_path: "/ssl/ca.crt"   # tls/mtls에서 사용
-    client_cert_path: ""          # mtls에서 사용
-    client_key_path: ""           # mtls에서 사용
+    security_mode: "none"          # none | tls | mtls
+    ca_cert_path: "/ssl/ca.crt"    # tls/mtls에서 사용
+    client_cert_path: ""           # mtls에서 사용
+    client_key_path: ""            # mtls에서 사용
     username: ""
     password: ""
     keepalive: 30
     clean_session: true
-    client_id: ""                 # 비우면 코드가 자동 생성(지속 세션 필요시 지정)
+    client_id: ""
   local_mqtt:
-    host: "localhost"  # Home Assistant 환경에서 자동으로 core-mosquitto로 변경됨
+    host: "localhost"              # "localhost"면 런타임에 core-mosquitto로 자동 치환
     port: 1883
     topic_prefix: "dxsafety"
     qos: 1
     retain: true
     enabled: true
-    username: ""  # Home Assistant 환경에서 자동으로 addons로 설정됨
-    password: ""  # Home Assistant 환경에서 자동으로 설정됨
+    username: ""
+    password: ""
   homeassistant_api:
-    token: ""                     # 일반적으로 비움: SUPERVISOR_TOKEN/파일로 자동 주입
-    url: "http://supervisor/core" # Core API 프록시
+    token: ""                      # 일반적으로 비움: SUPERVISOR_TOKEN 자동 주입
+    url: "http://supervisor/core/api"
     timeout: 30
   policy:
-    default_location: "zone.home"
+    default_location: "zone.home"  # 현재는 zone.home 우선, 실패 시 lat/lon 폴백
     lat: 36.123
     lon: 127.234
     radius_km_buffer: 10
-    severity_threshold: "moderate"  # minor|moderate|severe|critical
+    severity_threshold: "moderate" # minor|moderate|severe|critical
     night_mode: false
   tts:
     enabled: false
