@@ -100,7 +100,7 @@ async def main():
     ha = HAClient(
         base_url=s.ha.base_url,
         token=s.ha.token,
-        timeout_sec=s.ha.timeout_sec
+        timeout=10
     )
 
     # HA 좌표 실패 시 자동 폴백(운영 친화)
