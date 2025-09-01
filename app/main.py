@@ -1,6 +1,7 @@
 # app/main.py
 import os, asyncio, signal
 from typing import Optional
+from app.adapters.tts.engine import TTSEngine
 from app.settings import Settings
 from app.observability.health import create_app
 from app.adapters.mqtt_remote.client_async import RemoteMqttIngestor
@@ -40,6 +41,9 @@ def build_settings() -> Settings:
     s.geopolicy.mode = os.getenv("GEO_MODE", s.geopolicy.mode)
     s.geopolicy.severity_threshold = os.getenv("SEVERITY_THRESHOLD", s.geopolicy.severity_threshold)
     s.geopolicy.distance_km_threshold = float(os.getenv("DISTANCE_KM_THRESHOLD", s.geopolicy.distance_km_threshold))
+    s.geopolicy.polygon_buffer_km = float(os.getenv("POLYGON_BUFFER_KM", s.geopolicy.polygon_buffer_km))
+    s.tts.enabled = _b("TTS_ENABLED", s.tts.enabled)
+    s.tts.voice_language = os.getenv("TTS_VOICE_LANGUAGE", s.tts.voice_language)
 
     # HA
     s.ha.base_url = os.getenv("HA_BASE_URL", s.ha.base_url)
@@ -48,6 +52,15 @@ def build_settings() -> Settings:
     # 관측성
     s.observability.metrics_enabled = _b("METRICS_ENABLED", s.observability.metrics_enabled)
     s.observability.http_port = int(os.getenv("METRICS_PORT", s.observability.http_port))
+
+    # 신뢰성
+    s.reliability.queue_maxsize = int(os.getenv("QUEUE_MAXSIZE", s.reliability.queue_maxsize))
+
+    # TTS
+    s.tts.topic = os.getenv("TTS_TOPIC", s.tts.topic)
+    s.tts.template = os.getenv("TTS_TEMPLATE", s.tts.template)
+    s.tts.voice_language = os.getenv("TTS_VOICE_LANGUAGE", s.tts.voice_language)
+
     return s
 
 async def start_http(settings: Settings) -> Optional[asyncio.Task]:
@@ -60,7 +73,7 @@ async def start_http(settings: Settings) -> Optional[asyncio.Task]:
 
 async def main():
     s = build_settings()
-
+    tts_engine = TTSEngine(s.tts.topic, s.tts.template, s.tts.voice_language)
     ingest = RemoteMqttIngestor(
         host=s.remote_mqtt.host,
         port=s.remote_mqtt.port,
@@ -109,7 +122,7 @@ async def main():
     except Exception:
         s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
 
-    orch = Orchestrator(ingest, publisher, idem, ha, s)
+    orch = Orchestrator(ingest, publisher, idem, ha, tts_engine, severity_threshold=s.geopolicy.severity_threshold, distance_threshold_km=s.geopolicy.distance_km_threshold, polygon_buffer_km=s.geopolicy.polygon_buffer_km, policy_mode=s.geopolicy.mode, voice_enabled=s.tts.enabled, voice_language=s.tts.voice_language, queue_maxsize=s.reliability.queue_maxsize)
     http_task = await start_http(s)
 
     stop = asyncio.Future()
