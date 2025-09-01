@@ -66,11 +66,7 @@ class OrchestratorP4:
         # 시작 시간 기록
         self.start_time = time.time()
         
-        log.info("Phase 4 오케스트레이터 초기화됨", 
-                severity_threshold=severity_threshold,
-                distance_threshold_km=distance_threshold_km,
-                polygon_buffer_km=polygon_buffer_km,
-                policy_mode=policy_mode)
+        log.info("Phase 4 오케스트레이터 초기화됨")
     
     async def start(self) -> None:
         """

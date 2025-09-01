@@ -49,9 +49,7 @@ class OrchestratorP3:
         # 시작 시간 기록
         self.start_time = time.time()
         
-        log.info("Phase 3 오케스트레이터 초기화됨", 
-                severity_threshold=severity_threshold,
-                queue_maxsize=queue_maxsize)
+        log.info("Phase 3 오케스트레이터 초기화됨")
     
     async def start(self) -> None:
         """
