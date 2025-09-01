@@ -141,10 +141,10 @@ async def main():
                 s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
                 log.warning("HA 홈 좌표를 가져올 수 없음, 정책 모드 OR로 폴백")
             else:
-                log.info("HA 홈 좌표 조회 성공", lat=coords[0], lon=coords[1])
+                log.info("HA 홈 좌표 조회 성공")
     except Exception as e:
         s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
-        log.warning("HA 좌표 조회 실패, 정책 모드 OR로 폴백", error=str(e))
+        log.warning("HA 좌표 조회 실패, 정책 모드 OR로 폴백")
 
     orch = Orchestrator(ingest, publisher, idem, ha, tts_engine, severity_threshold=s.geopolicy.severity_threshold, distance_threshold_km=s.geopolicy.distance_km_threshold, polygon_buffer_km=s.geopolicy.polygon_buffer_km, policy_mode=s.geopolicy.mode, voice_enabled=s.tts.enabled, voice_language=s.tts.voice_language, queue_maxsize=s.reliability.queue_maxsize)
     log.info("오케스트레이터 생성 완료")
