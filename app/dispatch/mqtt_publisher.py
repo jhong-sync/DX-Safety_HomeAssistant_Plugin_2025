@@ -1,21 +1,123 @@
 import json
 import paho.mqtt.client as mqtt
 from app.observability.logger import get_logger
+from app.utils.retry import RetryManager
+import asyncio
+
 log = get_logger()
+
 class MqttPublisher:
     def __init__(self, cfg, metrics):
         self.cfg = cfg
         self.metrics = metrics
         self.client = mqtt.Client()
-        self.client.connect(cfg.host, cfg.port, keepalive=30)
-        self.client.loop_start()
+        self._connected = False
+        self._connection_task = None
+        
+        # 설정에서 재시도 옵션 가져오기
+        reliability_cfg = getattr(cfg, 'reliability', None)
+        if reliability_cfg:
+            self.retry_manager = RetryManager(
+                max_retries=getattr(reliability_cfg, 'max_retries', 5),
+                initial_delay=getattr(reliability_cfg, 'initial_delay', 2.0),
+                max_delay=getattr(reliability_cfg, 'max_delay', 60.0),
+                backoff_factor=getattr(reliability_cfg, 'backoff_factor', 2.0),
+                jitter=getattr(reliability_cfg, 'jitter', True)
+            )
+        else:
+            self.retry_manager = RetryManager(
+                max_retries=5,
+                initial_delay=2.0,
+                max_delay=60.0,
+                backoff_factor=2.0,
+                jitter=True
+            )
+        
+        # 연결을 지연시켜 서비스 준비 시간을 줍니다
+        self._connection_task = asyncio.create_task(self._connect_with_retry())
+    
+    async def _connect_with_retry(self):
+        """MQTT 연결을 재시도하면서 연결합니다."""
+        try:
+            await self.retry_manager.execute_with_retry(
+                self._connect_once,
+                "MQTT 연결",
+                max_retries=5
+            )
+            self._connected = True
+            log.info("MQTT 연결 성공")
+        except Exception as e:
+            log.error(f"MQTT 연결 최종 실패 - 로컬 MQTT 기능 비활성화: {e}")
+            self._connected = False
+    
+    def _connect_once(self):
+        """단일 MQTT 연결 시도"""
+        try:
+            log.info(f"MQTT 연결 시도: {self.cfg.host}:{self.cfg.port}")
+            self.client.connect(self.cfg.host, self.cfg.port, keepalive=30)
+            self.client.loop_start()
+            return True
+        except Exception as e:
+            log.warning(f"MQTT 연결 실패: {e}")
+            raise
+    
+    async def _ensure_connected(self):
+        """연결이 되어 있는지 확인하고 필요시 재연결"""
+        if not self._connected:
+            if self._connection_task and not self._connection_task.done():
+                # 연결 작업이 진행 중이면 대기
+                try:
+                    await asyncio.wait_for(self._connection_task, timeout=10.0)
+                except asyncio.TimeoutError:
+                    log.warning("MQTT 연결 대기 시간 초과")
+                    return False
+            else:
+                # 연결 작업이 완료되었지만 실패한 경우 재시도
+                self._connection_task = asyncio.create_task(self._connect_with_retry())
+                try:
+                    await asyncio.wait_for(self._connection_task, timeout=30.0)
+                except asyncio.TimeoutError:
+                    log.warning("MQTT 재연결 대기 시간 초과")
+                    return False
+        return self._connected
+    
     async def publish_alert(self, cae: dict, decision):
+        if not await self._ensure_connected():
+            log.warning("MQTT 연결되지 않음 - 알림 발행 건너뜀")
+            return
+            
         topic = f"{self.cfg.topic_prefix}/{decision.target_topic}"
         log.info({"msg": "publish_alert", "topic": topic, "cae": cae, "decision": decision})
         payload = json.dumps({"headline": cae["headline"], "severity": cae["severity"]}, ensure_ascii=False)
-        self.client.publish(topic, payload=payload, qos=self.cfg.qos, retain=self.cfg.retain)
+        
+        try:
+            result = self.client.publish(topic, payload=payload, qos=self.cfg.qos, retain=self.cfg.retain)
+            if result.rc != mqtt.MQTT_ERR_SUCCESS:
+                log.error(f"MQTT 발행 실패: {result.rc}")
+        except Exception as e:
+            log.error(f"MQTT 발행 중 오류: {e}")
 
     async def publish_tts(self, topic: str, text: str, severity: str = ""):
+        if not await self._ensure_connected():
+            log.warning("MQTT 연결되지 않음 - TTS 발행 건너뜀")
+            return
+            
         # topic is expected to be absolute (e.g., "dxsafety/tts")
         payload = json.dumps({"text": text, "severity": severity}, ensure_ascii=False)
-        self.client.publish(topic, payload=payload, qos=self.cfg.qos, retain=self.cfg.retain)
+        
+        try:
+            result = self.client.publish(topic, payload=payload, qos=self.cfg.qos, retain=self.cfg.retain)
+            if result.rc != mqtt.MQTT_ERR_SUCCESS:
+                log.error(f"MQTT TTS 발행 실패: {result.rc}")
+        except Exception as e:
+            log.error(f"MQTT TTS 발행 중 오류: {e}")
+    
+    async def close(self):
+        """MQTT 연결을 정리합니다."""
+        try:
+            if self._connected:
+                self.client.loop_stop()
+                self.client.disconnect()
+                log.info("MQTT 연결 정리 완료")
+        except Exception as e:
+            log.error(f"MQTT 연결 정리 중 오류: {e}")

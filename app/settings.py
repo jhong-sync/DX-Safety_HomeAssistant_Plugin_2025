@@ -27,6 +27,7 @@ class LocalMqtt(BaseModel):
     topic_prefix: str
     qos: int = 1
     retain: bool = True
+    enabled: bool = True  # MQTT 기능을 선택적으로 활성화
 
 
 class HomeAssistantAPI(BaseModel):
@@ -59,6 +60,12 @@ class Observability(BaseModel):
 class Reliability(BaseModel):
     idempotency_ttl_sec: int = 86400
     reconnect_max_backoff_sec: int = 120
+    # 재시도 설정
+    max_retries: int = 5
+    initial_delay: float = 1.0
+    max_delay: float = 120.0
+    backoff_factor: float = 2.0
+    jitter: bool = True
 
 
 class Settings(BaseModel):

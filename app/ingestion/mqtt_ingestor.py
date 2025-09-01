@@ -3,6 +3,7 @@ import ssl
 import socket, uuid, os, logging, traceback
 import paho.mqtt.client as mqtt
 from app.observability.logger import get_logger
+from app.utils.retry import RetryManager
 
 def _make_client_id(prefix="dxsafety") -> str:
     base = f"{prefix}-{socket.gethostname()}-{uuid.uuid4().hex[:6]}"
@@ -18,6 +19,25 @@ class MqttIngestor:
         self.on_message_cb = on_message
         self.metrics = metrics
         self.loop = loop or asyncio.get_event_loop()
+        
+        # 설정에서 재시도 옵션 가져오기
+        reliability_cfg = getattr(cfg, 'reliability', None)
+        if reliability_cfg:
+            self.retry_manager = RetryManager(
+                max_retries=getattr(reliability_cfg, 'max_retries', 10),
+                initial_delay=getattr(reliability_cfg, 'initial_delay', 1.0),
+                max_delay=getattr(reliability_cfg, 'max_delay', 120.0),
+                backoff_factor=getattr(reliability_cfg, 'backoff_factor', 2.0),
+                jitter=getattr(reliability_cfg, 'jitter', True)
+            )
+        else:
+            self.retry_manager = RetryManager(
+                max_retries=10,
+                initial_delay=1.0,
+                max_delay=120.0,
+                backoff_factor=2.0,
+                jitter=True
+            )
 
         # --- 설정 요약 로그 (민감정보 제외) ---
         mode = getattr(cfg, "security_mode", "none")
@@ -96,27 +116,38 @@ class MqttIngestor:
         except Exception as e:
             log.exception({"msg":"ingestor_on_message_error", "error": str(e)})
 
+    async def _connect_with_retry(self):
+        """재시도 로직으로 MQTT 연결"""
+        return await self.retry_manager.execute_with_retry(
+            self._connect_once,
+            "MQTT Ingestor 연결"
+        )
+    
+    def _connect_once(self):
+        """단일 MQTT 연결 시도"""
+        # 포트/모드 불일치 경고
+        mode = getattr(self.cfg, "security_mode", "none")
+        if (mode == "none" and self.cfg.port == 8883) or (mode in ("tls","mtls") and self.cfg.port == 1883):
+            log.warning({"msg":"mqtt_port_mode_mismatch","mode":mode,"port":self.cfg.port})
+
+        # TCP 프리플라이트 (빠르게 원인 파악)
+        try:
+            sock = socket.create_connection((self.cfg.host, self.cfg.port), timeout=5)
+            sock.close()
+        except Exception as e:
+            log.error({"msg":"mqtt_tcp_unreachable","host":self.cfg.host,"port":self.cfg.port,"error":str(e)})
+            raise
+
+        # 접속
+        self.client.connect(self.cfg.host, self.cfg.port, keepalive=self.cfg.keepalive)
+        self.client.loop_start()
+        return True
+
     async def run(self):
-        backoff = 1
         while True:
             try:
-                # 포트/모드 불일치 경고
-                mode = getattr(self.cfg, "security_mode", "none")
-                if (mode == "none" and self.cfg.port == 8883) or (mode in ("tls","mtls") and self.cfg.port == 1883):
-                    log.warning({"msg":"mqtt_port_mode_mismatch","mode":mode,"port":self.cfg.port})
-
-                # TCP 프리플라이트 (빠르게 원인 파악)
-                try:
-                    sock = socket.create_connection((self.cfg.host, self.cfg.port), timeout=5)
-                    sock.close()
-                except Exception as e:
-                    log.error({"msg":"mqtt_tcp_unreachable","host":self.cfg.host,"port":self.cfg.port,"error":str(e)})
-                    raise
-
-                # 접속
-                self.client.connect(self.cfg.host, self.cfg.port, keepalive=self.cfg.keepalive)
-                self.client.loop_start()
-
+                await self._connect_with_retry()
+                
                 # 메인 루프
                 while True:
                     await asyncio.sleep(1)
@@ -130,12 +161,12 @@ class MqttIngestor:
                     "topic": getattr(self.cfg,"topic",""),
                     "error": str(e)
                 })
+                
                 # 재시도
                 try:
                     self.client.loop_stop()
                 except Exception:
                     pass
-                # 지수 백오프
-                delay = min(backoff, getattr(getattr(self.cfg,"reliability", None), "reconnect_max_backoff_sec", 120))
-                await asyncio.sleep(delay)
-                backoff = min(backoff * 2, 120)
+                
+                # 재시도 매니저가 지연을 처리하므로 여기서는 대기하지 않음
+                continue
