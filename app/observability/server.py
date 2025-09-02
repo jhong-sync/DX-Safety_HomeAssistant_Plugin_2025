@@ -22,7 +22,7 @@ def run_http_server(settings: Settings, host: str = "0.0.0.0", port: int = None)
     """
     # 로거 설정
     setup_logging_dev(level=settings.observability.log_level)
-    log = get_logger()
+    log = get_logger("dxsafety.observability")
     
     # 포트 설정
     if port is None:
@@ -31,7 +31,7 @@ def run_http_server(settings: Settings, host: str = "0.0.0.0", port: int = None)
     # FastAPI 앱 생성
     app = create_app(settings)
     
-    log.info("HTTP 서버 시작 중", host=host, port=port)
+    log.info(f"HTTP 서버 시작 중 host:{host} port:{port}")
     
     # uvicorn으로 서버 실행
     uvicorn.run(

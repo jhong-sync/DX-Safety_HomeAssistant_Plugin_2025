@@ -43,7 +43,7 @@ class TTSEngine:
         self.voice_queue: asyncio.Queue = asyncio.Queue()
         self.is_running = False
         
-        log.info("TTS 엔진 초기화됨")
+        log.info(f"TTS 엔진 초기화됨 default_voice:{default_voice} default_volume:{default_volume} media_player_entity:{media_player_entity} tts_service:{tts_service}")
     
     async def start(self) -> None:
         """TTS 엔진을 시작합니다."""
@@ -89,13 +89,11 @@ class TTSEngine:
             }
             
             await self.voice_queue.put(voice_item)
-            log.debug("음성 메시지 큐에 추가됨", 
-                      message=message[:50] + "..." if len(message) > 50 else message,
-                      voice=voice_item["voice"])
+            log.debug(f"음성 메시지 큐에 추가됨 message:{message[:50] + '...' if len(message) > 50 else message} voice:{voice_item['voice']}")
             return True
             
         except Exception as e:
-            log.error("음성 메시지 큐 추가 실패", error=str(e))
+            log.error(f"음성 메시지 큐 추가 실패 error:{str(e)}")
             return False
     
     async def speak_alert(self, 
@@ -146,12 +144,9 @@ class TTSEngine:
                 success = await self._call_tts_service(voice_item)
                 
                 if success:
-                    log.info("음성 알림 재생됨", 
-                            message=voice_item["message"][:50] + "..." if len(voice_item["message"]) > 50 else voice_item["message"],
-                            voice=voice_item["voice"])
+                    log.info(f"음성 알림 재생됨 message:{voice_item['message'][:50] + '...' if len(voice_item['message']) > 50 else voice_item['message']} voice:{voice_item['voice']}")
                 else:
-                    log.error("음성 알림 재생 실패", 
-                             message=voice_item["message"][:50] + "..." if len(voice_item["message"]) > 50 else voice_item["message"])
+                    log.error(f"음성 알림 재생 실패 message:{voice_item['message'][:50] + '...' if len(voice_item['message']) > 50 else voice_item['message']}")
                 
                 # 큐 작업 완료 표시
                 self.voice_queue.task_done()
@@ -163,7 +158,7 @@ class TTSEngine:
                 # 타임아웃 시 계속 진행
                 continue
             except Exception as e:
-                log.error("음성 워커 오류", error=str(e))
+                log.error(f"음성 워커 오류 error:{str(e)}")
                 await asyncio.sleep(1.0)
     
     async def _call_tts_service(self, voice_item: Dict) -> bool:
@@ -199,12 +194,12 @@ class TTSEngine:
                 )
                 
                 if not volume_success:
-                    log.warning("볼륨 설정 실패", volume=voice_item["volume"])
+                    log.warning(f"볼륨 설정 실패 volume:{voice_item['volume']}")
             
             return True
             
         except Exception as e:
-            log.error("TTS 서비스 호출 실패", error=str(e))
+            log.error(f"TTS 서비스 호출 실패 error:{str(e)}")
             return False
     
     async def get_available_voices(self) -> List[str]:
@@ -234,7 +229,7 @@ class TTSEngine:
             return ["ko-KR", "en-US", "ja-JP", "zh-CN"]
             
         except Exception as e:
-            log.error("음성 목록 가져오기 실패", error=str(e))
+            log.error(f"음성 목록 가져오기 실패 error:{str(e)}")
             return ["ko-KR", "en-US", "ja-JP", "zh-CN"]
     
     async def get_queue_size(self) -> int:
@@ -255,4 +250,4 @@ class TTSEngine:
             except asyncio.QueueEmpty:
                 break
         
-        log.info("음성 큐 비움됨")
+        log.info(f"음성 큐 비움됨 count:{self.voice_queue.qsize()}")

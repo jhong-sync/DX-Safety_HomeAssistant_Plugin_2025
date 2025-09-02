@@ -20,7 +20,7 @@ from app.ports.ingest import AlertIngestPort
 from app.observability import metrics
 from app.observability.logging_setup import get_logger
 
-log = get_logger()
+log = get_logger("dxsafety.orchestrator_phase4")
 
 class OrchestratorP4:
     """Phase 4 오케스트레이터 (지리적 정책 & Home Assistant 통합)"""
@@ -100,13 +100,11 @@ class OrchestratorP4:
                 coords = await client.get_zone_home()
                 if coords:
                     self.home_coordinates = coords
-                    log.info("홈 좌표 로드됨", 
-                            lat=coords[0], 
-                            lon=coords[1])
+                    log.info(f"홈 좌표 로드됨 lat:{coords[0]} lon:{coords[1]}")
                 else:
                     log.warning("홈 좌표를 가져올 수 없습니다. 지리적 정책이 비활성화됩니다.")
         except Exception as e:
-            log.error("홈 좌표 로드 실패", error=str(e))
+            log.error(f"홈 좌표 로드 실패 error:{str(e)}")
     
     async def _producer(self):
         """원시 데이터를 큐에 추가하는 프로듀서"""
@@ -145,7 +143,7 @@ class OrchestratorP4:
                 if not await self.idem.add_if_absent(key):
                     # 중복 메시지, 건너뛰기
                     metrics.alerts_duplicate.inc()
-                    log.debug("중복 메시지 필터링됨", event_id=cae.event_id)
+                    log.debug(f"중복 메시지 필터링됨 event_id:{cae.event_id}")
                     continue
                 
                 # 지리적 정책 평가 (시간 측정)
@@ -185,21 +183,14 @@ class OrchestratorP4:
                         level=dec.level
                     ).inc()
                     
-                    log.info("경보 발송됨", 
-                            event_id=cae.event_id,
-                            severity=cae.severity,
-                            level=dec.level,
-                            reason=dec.reason,
-                            home_coordinates=self.home_coordinates)
+                    log.info(f"경보 발송됨 event_id:{cae.event_id} severity:{cae.severity} level:{dec.level} reason:{dec.reason} home_coordinates:{self.home_coordinates}")
                 
                 # 전체 처리 시간 측정
                 total_time = time.perf_counter() - t0
                 metrics.end_to_end_seconds.observe(total_time)
                 
             except Exception as e:
-                log.error("메시지 처리 오류", 
-                          error=str(e),
-                          event_id=raw.get("id", "unknown"))
+                log.error(f"메시지 처리 오류 error:{str(e)} event_id:{raw.get('id', 'unknown')}")
                 continue
     
     async def _update_metrics(self):
@@ -222,5 +213,5 @@ class OrchestratorP4:
                 await asyncio.sleep(30)  # 30초마다 업데이트
                 
             except Exception as e:
-                log.error("메트릭 업데이트 오류", error=str(e))
+                log.error(f"메트릭 업데이트 오류 error:{str(e)}")
                 await asyncio.sleep(30)

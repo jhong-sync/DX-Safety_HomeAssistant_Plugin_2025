@@ -18,7 +18,7 @@ from app.ports.ingest import AlertIngestPort
 from app.observability import metrics
 from app.observability.logging_setup import get_logger
 
-log = get_logger()
+log = get_logger("dxsafety.orchestrator_phase3")
 
 class OrchestratorP3:
     """Phase 3 오케스트레이터 (관측성 기능 포함)"""
@@ -133,20 +133,14 @@ class OrchestratorP3:
                         level=dec.level
                     ).inc()
                     
-                    log.info("경보 발송됨", 
-                            event_id=cae.event_id,
-                            severity=cae.severity,
-                            level=dec.level,
-                            reason=dec.reason)
+                    log.info(f"경보 발송됨 event_id:{cae.event_id} severity:{cae.severity} level:{dec.level} reason:{dec.reason}")
                 
                 # 전체 처리 시간 측정
                 total_time = time.perf_counter() - t0
                 metrics.end_to_end_seconds.observe(total_time)
                 
             except Exception as e:
-                log.error("메시지 처리 오류", 
-                          error=str(e),
-                          event_id=raw.get("id", "unknown"))
+                log.error(f"메시지 처리 오류 error:{str(e)} event_id:{raw.get('id', 'unknown')}")
                 continue
     
     async def _update_metrics(self):
@@ -169,5 +163,5 @@ class OrchestratorP3:
                 await asyncio.sleep(30)  # 30초마다 업데이트
                 
             except Exception as e:
-                log.error("메트릭 업데이트 오류", error=str(e))
+                log.error(f"메트릭 업데이트 오류 error:{str(e)}")
                 await asyncio.sleep(30)

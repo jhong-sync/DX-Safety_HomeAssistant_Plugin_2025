@@ -90,14 +90,14 @@ class HAClient:
                 if "latitude" in attrs and "longitude" in attrs:
                     lat = float(attrs["latitude"])
                     lon = float(attrs["longitude"])
-                    log.info("zone.home 좌표 가져옴", lat=lat, lon=lon)
+                    log.info(f"zone.home 좌표 가져옴 lat:{lat} lon:{lon}")
                     return (lat, lon)
             
             log.warning("zone.home 좌표를 찾을 수 없습니다")
             return None
             
         except Exception as e:
-            log.error("zone.home 좌표 가져오기 실패", error=str(e))
+            log.error(f"zone.home 좌표 가져오기 실패 error:{str(e)}")
             return None
     
     async def get_zones(self) -> List[Dict]:
@@ -121,11 +121,11 @@ class HAClient:
                         "radius": state.get("attributes", {}).get("radius")
                     })
             
-            log.info("zone 목록 가져옴")
+            log.info(f"zone 목록 가져옴 count:{len(zones)}")
             return zones
             
         except Exception as e:
-            log.error("zone 목록 가져오기 실패")
+            log.error(f"zone 목록 가져오기 실패 error:{str(e)}")
             return []
     
     async def get_device_states(self, device_ids: List[str]) -> Dict[str, Dict]:
@@ -152,11 +152,11 @@ class HAClient:
                             "last_updated": state.get("last_updated")
                         }
             
-            log.info("디바이스 상태 가져옴")
+            log.info(f"디바이스 상태 가져옴 count:{len(device_states)}")
             return device_states
             
         except Exception as e:
-            log.error("디바이스 상태 가져오기 실패", error=str(e))
+            log.error(f"디바이스 상태 가져오기 실패 error:{str(e)} device_ids:{device_ids}")
             return {}
     
     async def call_service(self, domain: str, service: str, **kwargs) -> bool:
@@ -178,14 +178,11 @@ class HAClient:
                 json=kwargs
             )
             
-            log.info("서비스 호출 성공")
+            log.info(f"서비스 호출 성공 domain:{domain} service:{service}")
             return True
             
         except Exception as e:
-            log.error("서비스 호출 실패", 
-                      domain=domain, 
-                      service=service, 
-                      error=str(e))
+            log.error(f"서비스 호출 실패 domain:{domain} service:{service} error:{str(e)}")
             return False
     
     async def get_config(self) -> Optional[Dict]:
@@ -197,9 +194,9 @@ class HAClient:
         """
         try:
             data = await self._make_request("GET", "/api/config")
-            log.info("Home Assistant 설정 가져옴")
+            log.info(f"Home Assistant 설정 가져옴 data:{data}")
             return data
             
         except Exception as e:
-            log.error("설정 가져오기 실패", error=str(e))
+            log.error(f"Home Assistant 설정 가져오기 실패 error:{str(e)}")
             return None
