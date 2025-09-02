@@ -81,8 +81,14 @@ class LocalMqttPublisher:
         """발송 워커를 시작합니다."""
         self._running = True
         
-        # MQTT 연결
-        await self._connect()
+        # MQTT 연결 (재시도 포함)
+        while self._running:
+            try:
+                await self._connect()
+                break  # 연결 성공 시 루프 종료
+            except Exception as e:
+                log.error(f"MQTT 연결 실패, 5초 후 재시도: {e}")
+                await asyncio.sleep(5)
         
         # Outbox 워커 시작
         while self._running:
@@ -95,42 +101,47 @@ class LocalMqttPublisher:
     
     async def _connect(self) -> None:
         """MQTT 브로커에 연결합니다."""
-        connect_kwargs = {
-            "hostname": self.broker_host,
-            "port": self.broker_port,
-            "keepalive": self.keepalive
-        }
-        
-        if self.username:
-            connect_kwargs["username"] = self.username
-        if self.password:
-            connect_kwargs["password"] = self.password
-        if self.client_id:
-            connect_kwargs["client_id"] = self.client_id
-        
-        if self.tls:
-            connect_kwargs["tls"] = True
-        
-        # LWT 설정
-        connect_kwargs["will"] = {
-            "topic": self.lwt_topic,
-            "payload": "offline",
-            "qos": 1,
-            "retain": True
-        }
-        
-        self.client = Client(**connect_kwargs)
-        await self.client.connect()
-        
-        # 온라인 상태 발송
-        await self.client.publish(
-            self.lwt_topic,
-            self.lwt_payload_online,
-            qos=1,
-            retain=True
-        )
-        
-        log.info(f"로컬 MQTT 브로커 연결됨: {self.broker_host}:{self.broker_port}")
+        try:
+            connect_kwargs = {
+                "hostname": self.broker_host,
+                "port": self.broker_port,
+                "keepalive": self.keepalive
+            }
+            
+            if self.username:
+                connect_kwargs["username"] = self.username
+            if self.password:
+                connect_kwargs["password"] = self.password
+            if self.client_id:
+                connect_kwargs["client_id"] = self.client_id
+            
+            if self.tls:
+                connect_kwargs["tls"] = True
+            
+            # LWT 설정
+            connect_kwargs["will"] = {
+                "topic": self.lwt_topic,
+                "payload": "offline",
+                "qos": 1,
+                "retain": True
+            }
+            
+            log.info(f"MQTT 브로커 연결 시도: {self.broker_host}:{self.broker_port}")
+            self.client = Client(**connect_kwargs)
+            await self.client.connect()
+            
+            # 온라인 상태 발송
+            await self.client.publish(
+                self.lwt_topic,
+                self.lwt_payload_online,
+                qos=1,
+                retain=True
+            )
+            
+            log.info(f"로컬 MQTT 브로커 연결됨: {self.broker_host}:{self.broker_port}")
+        except Exception as e:
+            log.error(f"MQTT 브로커 연결 실패: {self.broker_host}:{self.broker_port}, 오류: {e}")
+            raise
     
     async def _process_outbox(self) -> None:
         """Outbox의 메시지를 처리합니다."""
