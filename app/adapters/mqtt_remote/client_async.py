@@ -1,54 +1,34 @@
-"""
-Remote MQTT ingestion adapter for DX-Safety.
-
-This module implements the remote MQTT ingestion adapter
-with reliability features including reconnect logic and LWT.
-"""
-
 import asyncio
 import json
+import ssl
 from typing import AsyncIterator, Dict
-from aiomqtt import Client, MqttError
-from app.observability.logging_setup import get_logger
+# 패키지에 따라 둘 중 하나 사용하세요. 현재는 aiomqtt를 쓰셨으니 그대로 갑니다.
+from aiomqtt import Client, MqttError, Will
+# from asyncio_mqtt import Client, MqttError, Will
 
+from app.observability.logging_setup import get_logger
 log = get_logger("dxsafety.mqtt_remote")
 
 class RemoteMqttIngestor:
     """원격 MQTT 수집 어댑터"""
-    
-    def __init__(self, 
-                 host: str, 
-                 port: int, 
-                 topic: str,
-                 *,
-                 username: str | None = None,
-                 password: str | None = None,
-                 tls: bool = False,
-                 client_id: str | None = None,
-                 keepalive: int = 30,
-                 clean_session: bool = False,
-                 lwt_topic: str = "dxsafety/state",
-                 lwt_payload: str = "offline",
-                 lwt_qos: int = 1,
-                 lwt_retain: bool = True):
-        """
-        초기화합니다.
-        
-        Args:
-            host: MQTT 브로커 호스트
-            port: MQTT 브로커 포트
-            topic: 구독할 토픽
-            username: 사용자명
-            password: 비밀번호
-            tls: TLS 사용 여부
-            client_id: 클라이언트 ID
-            keepalive: keepalive 시간
-            clean_session: clean session 여부
-            lwt_topic: Last Will and Testament 토픽
-            lwt_payload: LWT 페이로드
-            lwt_qos: LWT QoS
-            lwt_retain: LWT retain 플래그
-        """
+
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        topic: str,
+        *,
+        username: str | None = None,
+        password: str | None = None,
+        tls: bool = False,
+        client_id: str | None = None,
+        keepalive: int = 30,
+        clean_session: bool = False,
+        lwt_topic: str = "dxsafety/state",
+        lwt_payload: str = "offline",
+        lwt_qos: int = 1,
+        lwt_retain: bool = True,
+    ):
         self.host = host
         self.port = port
         self.topic = topic
@@ -62,94 +42,99 @@ class RemoteMqttIngestor:
         self.lwt_payload = lwt_payload
         self.lwt_qos = lwt_qos
         self.lwt_retain = lwt_retain
-        
+
         self.client: Client | None = None
         self._running = False
-    
+
     async def recv(self) -> AsyncIterator[Dict]:
-        """
-        원시 경보 데이터를 비동기적으로 수신합니다.
-        
-        Yields:
-            원시 딕셔너리 데이터
-        """
         self._running = True
-        
         while self._running:
             try:
                 await self._connect()
                 await self._subscribe()
-                
+
+                assert self.client is not None
                 async with self.client.messages() as messages:
                     async for message in messages:
                         if not self._running:
                             break
-                        
                         try:
-                            # JSON 파싱
-                            payload = json.loads(message.payload.decode('utf-8'))
+                            payload = json.loads(message.payload.decode("utf-8"))
                             yield payload
                         except json.JSONDecodeError as e:
                             log.error(f"JSON 파싱 오류: {e}")
+                        except UnicodeDecodeError as e:
+                            log.error(f"문자열 디코딩 오류: {e}")
                         except Exception as e:
                             log.error(f"메시지 처리 오류: {e}")
-                            
+
             except MqttError as e:
                 log.error(f"MQTT 오류: {e}")
                 if self._running:
-                    await asyncio.sleep(5)  # 재연결 전 대기
+                    await asyncio.sleep(5)  # 재연결 대기
             except Exception as e:
                 log.error(f"예상치 못한 오류: {e}")
                 if self._running:
                     await asyncio.sleep(5)
-    
+            finally:
+                if self.client:
+                    try:
+                        await self.client.disconnect()
+                    except Exception:
+                        pass
+                    self.client = None
+
     async def _connect(self) -> None:
         """MQTT 브로커에 연결합니다."""
         if self.client:
-            await self.client.disconnect()
-        
-        # 연결 옵션 구성
-        connect_kwargs = {
-            "hostname": self.host,
-            "port": self.port,
-            "keepalive": self.keepalive,
-            "clean_session": self.clean_session
-        }
-        
-        if self.username:
-            connect_kwargs["username"] = self.username
-        if self.password:
-            connect_kwargs["password"] = self.password
-        if self.client_id:
-            connect_kwargs["client_id"] = self.client_id
-        
-        # TLS 설정
+            try:
+                await self.client.disconnect()
+            except Exception:
+                pass
+            self.client = None
+
+        # TLS 컨텍스트 준비 (필요 시)
+        tls_context = None
         if self.tls:
-            connect_kwargs["tls"] = True
-        
-        # LWT 설정
-        connect_kwargs["will"] = {
-            "topic": self.lwt_topic,
-            "payload": self.lwt_payload,
-            "qos": self.lwt_qos,
-            "retain": self.lwt_retain
-        }
-        
-        self.client = Client(**connect_kwargs)
+            tls_context = ssl.create_default_context()
+            # 필요 시 인증서 검증 커스터마이즈:
+            # tls_context.check_hostname = False
+            # tls_context.verify_mode = ssl.CERT_NONE
+
+        # LWT 는 dict가 아니라 Will 객체로!
+        will = Will(
+            topic=self.lwt_topic,
+            payload=self.lwt_payload.encode("utf-8"),
+            qos=self.lwt_qos,
+            retain=self.lwt_retain,
+        )
+
+        self.client = Client(
+            hostname=self.host,
+            port=self.port,
+            username=self.username,
+            password=self.password,
+            client_id=self.client_id,
+            keepalive=self.keepalive,
+            clean_session=self.clean_session,
+            tls_context=tls_context,  # aiomqtt/asyncio-mqtt는 tls_context 사용
+            will=will,
+        )
+
         await self.client.connect()
         log.info(f"MQTT 브로커 연결됨: {self.host}:{self.port}")
-    
+
     async def _subscribe(self) -> None:
-        """토픽을 구독합니다."""
         if not self.client:
             raise RuntimeError("MQTT 클라이언트가 연결되지 않았습니다")
-        
         await self.client.subscribe(self.topic)
         log.info(f"토픽 구독됨: {self.topic}")
-    
+
     async def stop(self) -> None:
-        """수집을 중지합니다."""
         self._running = False
         if self.client:
-            await self.client.disconnect()
+            try:
+                await self.client.disconnect()
+            except Exception:
+                pass
             log.info("MQTT 연결 종료됨")
