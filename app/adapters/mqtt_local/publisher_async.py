@@ -155,10 +155,10 @@ class LocalMqttPublisher:
             
             # 성공 시 항목 삭제
             await self.outbox.delete(item.id)
-            log.debug(f"메시지 발송 성공: {item.topic}")
+            log.info(f"메시지 발송 성공: id:{item.id} topic:{item.topic} payload:{item.payload}")
             
         except Exception as e:
-            log.error(f"메시지 발송 실패: {e}")
+            log.error(f"메시지 발송 실패: id:{item.id} topic:{item.topic} error:{str(e)}")
             
             # 재시도 횟수 증가
             await self.outbox.mark_attempt(item.id)
