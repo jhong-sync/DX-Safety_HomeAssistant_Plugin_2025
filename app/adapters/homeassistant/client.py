@@ -238,7 +238,8 @@ class HAClient:
             log.error(f"위치 추적 디바이스 목록 가져오기 실패 error:{str(e)}")
             return []
 
-    async def notify(self, service: str, title: str, message: str, url: str):
+    async def notify(self, service: str, title: str, message: str, url: str, 
+                    sound: Optional[Dict] = None, actions: Optional[List[Dict]] = None):
         """모바일 앱에 푸시 알림을 발송합니다."""
         try:
             payload = {
@@ -246,6 +247,15 @@ class HAClient:
                 "message": message,
                 "data": {"url": url, "clickAction": url},
             }
+            
+            # 소리 설정 추가
+            if sound:
+                payload["data"]["push"] = {"sound": sound}
+            
+            # 액션 버튼 추가
+            if actions:
+                payload["data"]["actions"] = actions
+            
             result = await self._make_request(
                 "POST", f"/api/services/notify/{service}", json=payload
             )

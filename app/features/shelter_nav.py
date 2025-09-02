@@ -38,13 +38,41 @@ def load_shelters(path: str) -> List[Shelter]:
         headers = [c.value for c in ws[1]]
         idx = {h: i for i, h in enumerate(headers)}
         
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            rows.append({
-                "name": row[idx["name"]],
-                "address": row[idx.get("address")] if "address" in idx else "",
-                "lat": float(row[idx["lat"]]),
-                "lon": float(row[idx["lon"]])
-            })
+        log.info(f"엑셀 헤더 확인: {headers}")
+        
+        # 정확한 컬럼명 매핑
+        name_col = "Facility Name"
+        lat_col = "Latitude (EPSG4326)"
+        lon_col = "Longitude (EPSG4326)"
+        address_col = "Lot-based Full Address"
+        
+        # 필수 컬럼 검증
+        if name_col not in idx:
+            raise ValueError(f"시설명 컬럼을 찾을 수 없습니다: {name_col}. 사용 가능한 컬럼: {list(idx.keys())}")
+        
+        if lat_col not in idx:
+            raise ValueError(f"위도 컬럼을 찾을 수 없습니다: {lat_col}. 사용 가능한 컬럼: {list(idx.keys())}")
+        
+        if lon_col not in idx:
+            raise ValueError(f"경도 컬럼을 찾을 수 없습니다: {lon_col}. 사용 가능한 컬럼: {list(idx.keys())}")
+        
+        log.info(f"컬럼 매핑 완료 - 시설명:{name_col}, 위도:{lat_col}, 경도:{lon_col}, 주소:{address_col}")
+        
+        for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            try:
+                # 빈 행 건너뛰기
+                if not row[idx[name_col]] or row[idx[name_col]] is None:
+                    continue
+                
+                rows.append({
+                    "name": str(row[idx[name_col]]).strip(),
+                    "address": str(row[idx[address_col]]).strip() if address_col in idx and row[idx[address_col]] else "",
+                    "lat": float(row[idx[lat_col]]),
+                    "lon": float(row[idx[lon_col]])
+                })
+            except (ValueError, TypeError, IndexError) as e:
+                log.warning(f"행 {row_num} 데이터 변환 오류 건너뜀: {row} error:{e}")
+                continue
     else:
         raise ValueError("지원하지 않는 파일 형식")
     
@@ -121,10 +149,31 @@ class ShelterNavigator:
                     self.appname
                 )
                 
-                title = "가까운 대피소 안내"
-                msg = f"{near['name']} ({dist:.2f}km) - 탭하면 네이버지도 열림"
+                title = "[대피] 가까운 대피소 안내"
+                msg = f"{near['name']} ({dist:.2f}km) - 가장 가까운 대피소로 이동하세요."
                 
-                await self.ha.notify(service, title, msg, url)
+                # 소리 설정 (긴급 알림)
+                sound = {
+                    "name": "Siren.wav",
+                    "critical": 1,
+                    "volume": 1
+                }
+                
+                # 액션 버튼 설정
+                actions = [
+                    {
+                        "action": "URI",
+                        "title": "네이버 지도 길안내",
+                        "uri": url
+                    },
+                    {
+                        "action": "URI", 
+                        "title": "구글 지도 길안내",
+                        "uri": f"google.navigation:q={near['lat']},{near['lon']}&mode=w"
+                    }
+                ]
+                
+                await self.ha.notify(service, title, msg, url, sound=sound, actions=actions)
                 log.info(f"대피소 알림 발송됨 device:{d['name']} shelter:{near['name']} distance:{dist:.2f}km")
                 
             except Exception as e:
