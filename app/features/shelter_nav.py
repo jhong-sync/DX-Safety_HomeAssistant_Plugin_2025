@@ -64,11 +64,33 @@ def load_shelters(path: str) -> List[Shelter]:
                 if not row[idx[name_col]] or row[idx[name_col]] is None:
                     continue
                 
+                # 위도/경도 값 검증
+                lat_val = row[idx[lat_col]]
+                lon_val = row[idx[lon_col]]
+                
+                # 빈 값이나 유효하지 않은 값 건너뛰기
+                if not lat_val or not lon_val or lat_val == '' or lon_val == '':
+                    log.warning(f"행 {row_num} 위도/경도 값이 비어있음: {row[idx[name_col]]}")
+                    continue
+                
+                # 숫자 변환 시도
+                try:
+                    lat = float(lat_val)
+                    lon = float(lon_val)
+                except (ValueError, TypeError):
+                    log.warning(f"행 {row_num} 위도/경도 변환 실패: lat={lat_val}, lon={lon_val}")
+                    continue
+                
+                # 유효한 좌표 범위 검증 (한국 지역)
+                if not (33.0 <= lat <= 38.5 and 124.0 <= lon <= 132.0):
+                    log.warning(f"행 {row_num} 좌표가 한국 지역 범위를 벗어남: lat={lat}, lon={lon}")
+                    continue
+                
                 rows.append({
                     "name": str(row[idx[name_col]]).strip(),
                     "address": str(row[idx[address_col]]).strip() if address_col in idx and row[idx[address_col]] else "",
-                    "lat": float(row[idx[lat_col]]),
-                    "lon": float(row[idx[lon_col]])
+                    "lat": lat,
+                    "lon": lon
                 })
             except (ValueError, TypeError, IndexError) as e:
                 log.warning(f"행 {row_num} 데이터 변환 오류 건너뜀: {row} error:{e}")
