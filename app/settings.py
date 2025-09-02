@@ -63,7 +63,7 @@ class TTS(BaseModel):
 
 class ShelterNav(BaseModel):
     enabled: bool = True
-    file_path: str = "/data/supervisor/addons/data/995c7d88_dx_safety/share/shelter2025.xlsx"
+    file_path: str = "/opt/app/share/shelter2025.xlsx"
     appname: str = "com.synctechno.dxsafety"
     notify_group: str = ""
 
