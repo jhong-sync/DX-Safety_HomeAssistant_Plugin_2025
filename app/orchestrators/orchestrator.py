@@ -18,9 +18,11 @@ from app.adapters.storage.sqlite_outbox import SQLiteOutbox
 from app.adapters.mqtt_local.publisher_async import LocalMqttPublisher
 from app.adapters.homeassistant.client import HAClient
 from app.adapters.tts.engine import TTSEngine
+from app.features.shelter_nav import ShelterNavigator
 from app.ports.ingest import AlertIngestPort
 from app.observability import metrics
 from app.observability.logging_setup import get_logger
+from app.settings import Settings
 
 log = get_logger("dxsafety.orchestrator")
 
@@ -40,7 +42,9 @@ class Orchestrator:
                  policy_mode: str = "AND",
                  voice_enabled: bool = True,
                  voice_language: str = "ko-KR",
-                 queue_maxsize: int = 1000):
+                 queue_maxsize: int = 1000,
+                 shelter_nav_enabled: bool = False,
+                 shelter_nav_settings: Optional[Settings] = None):
         """
         초기화합니다.
         
@@ -71,6 +75,11 @@ class Orchestrator:
         self.voice_enabled = voice_enabled
         self.voice_language = voice_language
         
+        # 대피소 네비게이션 설정
+        self.shelter_nav_enabled = shelter_nav_enabled
+        self.shelter_nav_settings = shelter_nav_settings
+        self.shelter_navigator: Optional[ShelterNavigator] = None
+        
         # 홈 좌표 캐시
         self.home_coordinates: Optional[Tuple[float, float]] = None
         
@@ -90,6 +99,15 @@ class Orchestrator:
         
         # 홈 좌표 가져오기
         await self._load_home_coordinates()
+        
+        # 대피소 네비게이터 초기화
+        if self.shelter_nav_enabled and self.shelter_nav_settings:
+            self.shelter_navigator = ShelterNavigator(
+                ha=self.ha_client,
+                path=self.shelter_nav_settings.shelter_nav.file_path,
+                appname=self.shelter_nav_settings.shelter_nav.appname
+            )
+            log.info(f"대피소 네비게이터 초기화됨 path:{self.shelter_nav_settings.shelter_nav.file_path}")
         
         # TTS 엔진 시작
         if self.voice_enabled:
@@ -208,7 +226,12 @@ class Orchestrator:
                     # 음성 알림 (비동기로 실행)
                     if self.voice_enabled:
                         asyncio.create_task(self._send_voice_alert(cae, dec))
-                    log.info(f"경보 발송됨 event_id:{cae.event_id} severity:{cae.severity} level:{dec.level} reason:{dec.reason} home_coordinates:{self.home_coordinates} voice_enabled:{self.voice_enabled}")
+                    
+                    # 대피소 알림 (비동기로 실행)
+                    if self.shelter_nav_enabled and self.shelter_navigator:
+                        asyncio.create_task(self._send_shelter_alert())
+                    
+                    log.info(f"경보 발송됨 event_id:{cae.event_id} severity:{cae.severity} level:{dec.level} reason:{dec.reason} home_coordinates:{self.home_coordinates} voice_enabled:{self.voice_enabled} shelter_nav_enabled:{self.shelter_nav_enabled}")
                 
                 # 전체 처리 시간 측정
                 total_time = time.perf_counter() - t0
@@ -255,6 +278,25 @@ class Orchestrator:
                 
         except Exception as e:
             log.error(f"음성 알림 처리 오류 error:{str(e)} event_id:{cae.event_id}")
+    
+    async def _send_shelter_alert(self) -> None:
+        """
+        대피소 알림을 발송합니다.
+        """
+        try:
+            if not self.shelter_navigator:
+                log.warning("대피소 네비게이터가 초기화되지 않았습니다")
+                return
+            
+            # 대피소 알림 발송
+            await self.shelter_navigator.notify_all_devices(
+                notify_group=self.shelter_nav_settings.shelter_nav.notify_group if self.shelter_nav_settings else None
+            )
+            
+            log.info("대피소 알림 발송 완료")
+            
+        except Exception as e:
+            log.error(f"대피소 알림 처리 오류 error:{str(e)}")
     
     async def _update_metrics(self):
         """주기적으로 메트릭을 업데이트합니다."""

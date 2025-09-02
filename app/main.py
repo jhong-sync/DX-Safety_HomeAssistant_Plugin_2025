@@ -63,6 +63,12 @@ def build_settings() -> Settings:
     s.tts.template = os.getenv("TTS_TEMPLATE", s.tts.template)
     s.tts.voice_language = os.getenv("TTS_VOICE_LANGUAGE", s.tts.voice_language)
 
+    # 대피소 네비게이션
+    s.shelter_nav.enabled = _b("SHELTER_NAV_ENABLED", s.shelter_nav.enabled)
+    s.shelter_nav.file_path = os.getenv("SHELTER_NAV_FILE_PATH", s.shelter_nav.file_path)
+    s.shelter_nav.appname = os.getenv("SHELTER_NAV_APPNAME", s.shelter_nav.appname)
+    s.shelter_nav.notify_group = os.getenv("SHELTER_NAV_NOTIFY_GROUP", s.shelter_nav.notify_group)
+
     return s
 
 async def start_http(settings: Settings) -> Optional[asyncio.Task]:
@@ -146,7 +152,18 @@ async def main():
         s.geopolicy.mode = "OR"  # severity-only로도 동작하도록 완화
         log.warning(f"HA 좌표 조회 실패, 정책 모드 OR로 폴백 error:{str(e)}")
 
-    orch = Orchestrator(ingest, publisher, idem, ha, tts_engine, severity_threshold=s.geopolicy.severity_threshold, distance_threshold_km=s.geopolicy.distance_km_threshold, polygon_buffer_km=s.geopolicy.polygon_buffer_km, policy_mode=s.geopolicy.mode, voice_enabled=s.tts.enabled, voice_language=s.tts.voice_language, queue_maxsize=s.reliability.queue_maxsize)
+    orch = Orchestrator(
+        ingest, publisher, idem, ha, tts_engine, 
+        severity_threshold=s.geopolicy.severity_threshold, 
+        distance_threshold_km=s.geopolicy.distance_km_threshold, 
+        polygon_buffer_km=s.geopolicy.polygon_buffer_km, 
+        policy_mode=s.geopolicy.mode, 
+        voice_enabled=s.tts.enabled, 
+        voice_language=s.tts.voice_language, 
+        queue_maxsize=s.reliability.queue_maxsize,
+        shelter_nav_enabled=s.shelter_nav.enabled,
+        shelter_nav_settings=s
+    )
     log.info("오케스트레이터 생성 완료")
     
     http_task = await start_http(s)
