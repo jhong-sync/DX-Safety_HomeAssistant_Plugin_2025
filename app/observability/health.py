@@ -84,7 +84,10 @@ def create_app(settings: Settings) -> FastAPI:
             nav = ShelterNavigator(ha, settings.shelter_nav.file_path, settings.shelter_nav.appname)
             
             notify_group = payload.get("notify_group") or settings.shelter_nav.notify_group or None
-            await nav.notify_all_devices(notify_group)
+            
+            # async with를 사용하여 세션 관리
+            async with ha:
+                await nav.notify_all_devices(notify_group)
             
             log.info(f"대피소 알림 요청 처리 완료 notify_group:{notify_group}")
             return {"ok": True, "message": "대피소 알림 발송 완료"}

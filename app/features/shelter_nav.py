@@ -148,56 +148,58 @@ class ShelterNavigator:
         if not self._shelters:
             self.load()
         
-        svcs = set(await self.ha.list_notify_mobile_services())
-        devices = await self.ha.get_device_trackers()
-        
-        log.info(f"디바이스 알림 시작 devices:{len(devices)} services:{len(svcs)}")
-        
-        for d in devices:
-            slug = d["entity_id"].split(".", 1)[1]
-            cand = f"mobile_app_{slug}"
-            service = cand if cand in svcs else notify_group
+        # async with를 사용하여 세션 관리
+        async with self.ha as client:
+            svcs = set(await client.list_notify_mobile_services())
+            devices = await client.get_device_trackers()
             
-            if not service:
-                log.warning(f"알림 서비스를 찾을 수 없음 device:{d['entity_id']}")
-                continue
+            log.info(f"디바이스 알림 시작 devices:{len(devices)} services:{len(svcs)}")
             
-            try:
-                near, dist = find_nearest(d["lat"], d["lon"], self._shelters)
-                url = build_naver_url(
-                    float(near["lat"]), 
-                    float(near["lon"]),
-                    str(near["name"]), 
-                    self.appname
-                )
+            for d in devices:
+                slug = d["entity_id"].split(".", 1)[1]
+                cand = f"mobile_app_{slug}"
+                service = cand if cand in svcs else notify_group
                 
-                title = "[대피] 가까운 대피소 안내"
-                msg = f"{near['name']} ({dist:.2f}km) - 가장 가까운 대피소로 이동하세요."
+                if not service:
+                    log.warning(f"알림 서비스를 찾을 수 없음 device:{d['entity_id']}")
+                    continue
                 
-                # 소리 설정 (긴급 알림)
-                sound = {
-                    "name": "Siren.wav",
-                    "critical": 1,
-                    "volume": 1
-                }
-                
-                # 액션 버튼 설정
-                actions = [
-                    {
-                        "action": "URI",
-                        "title": "네이버 지도 길안내",
-                        "uri": url
-                    },
-                    {
-                        "action": "URI", 
-                        "title": "구글 지도 길안내",
-                        "uri": f"google.navigation:q={near['lat']},{near['lon']}&mode=w"
+                try:
+                    near, dist = find_nearest(d["lat"], d["lon"], self._shelters)
+                    url = build_naver_url(
+                        float(near["lat"]), 
+                        float(near["lon"]),
+                        str(near["name"]), 
+                        self.appname
+                    )
+                    
+                    title = "[대피] 가까운 대피소 안내"
+                    msg = f"{near['name']} ({dist:.2f}km) - 가장 가까운 대피소로 이동하세요."
+                    
+                    # 소리 설정 (긴급 알림)
+                    sound = {
+                        "name": "Siren.wav",
+                        "critical": 1,
+                        "volume": 1
                     }
-                ]
-                
-                await self.ha.notify(service, title, msg, url, sound=sound, actions=actions)
-                log.info(f"대피소 알림 발송됨 device:{d['name']} shelter:{near['name']} distance:{dist:.2f}km")
-                
-            except Exception as e:
-                log.error(f"대피소 알림 발송 실패 device:{d['entity_id']} error:{str(e)}")
-                continue
+                    
+                    # 액션 버튼 설정
+                    actions = [
+                        {
+                            "action": "URI",
+                            "title": "네이버 지도 길안내",
+                            "uri": url
+                        },
+                        {
+                            "action": "URI", 
+                            "title": "구글 지도 길안내",
+                            "uri": f"google.navigation:q={near['lat']},{near['lon']}&mode=w"
+                        }
+                    ]
+                    
+                    await client.notify(service, title, msg, url, sound=sound, actions=actions)
+                    log.info(f"대피소 알림 발송됨 device:{d['name']} shelter:{near['name']} distance:{dist:.2f}km")
+                    
+                except Exception as e:
+                    log.error(f"대피소 알림 발송 실패 device:{d['entity_id']} error:{str(e)}")
+                    continue
