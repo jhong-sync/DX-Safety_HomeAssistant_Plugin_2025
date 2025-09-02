@@ -110,7 +110,7 @@ class OrchestratorP3:
                 if not await self.idem.add_if_absent(key):
                     # 중복 메시지, 건너뛰기
                     metrics.alerts_duplicate.inc()
-                    log.debug("중복 메시지 필터링됨", event_id=cae.event_id)
+                    log.info("중복 메시지 필터링됨", event_id=cae.event_id)
                     continue
                 
                 # 정책 평가 (시간 측정)

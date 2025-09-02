@@ -108,13 +108,7 @@ def evaluate_geographic_policy(
     # 레벨 설정
     level = cae.severity
     
-    log.debug("지리적 정책 평가 완료",
-              event_id=cae.event_id,
-              severity=cae.severity,
-              severity_trigger=severity_trigger,
-              geographic_trigger=geographic_trigger,
-              final_trigger=final_trigger,
-              mode=mode)
+    log.info(f"지리적 정책 평가 완료 event_id={cae.event_id} severity={cae.severity} severity_trigger={severity_trigger} geographic_trigger={geographic_trigger} final_trigger={final_trigger} mode={mode}")
     
     return Decision(
         trigger=final_trigger,

@@ -161,7 +161,7 @@ class OrchestratorP5:
                 if not await self.idem.add_if_absent(key):
                     # 중복 메시지, 건너뛰기
                     metrics.alerts_duplicate.inc()
-                    log.debug(f"중복 메시지 필터링됨 event_id:{cae.event_id}")
+                    log.info(f"중복 메시지 필터링됨 event_id:{cae.event_id}")
                     continue
                 
                 # 지리적 정책 평가 (시간 측정)

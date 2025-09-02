@@ -89,7 +89,7 @@ class TTSEngine:
             }
             
             await self.voice_queue.put(voice_item)
-            log.debug(f"음성 메시지 큐에 추가됨 message:{message[:50] + '...' if len(message) > 50 else message} voice:{voice_item['voice']}")
+            log.info(f"음성 메시지 큐에 추가됨 message:{message[:50] + '...' if len(message) > 50 else message} voice:{voice_item['voice']}")
             return True
             
         except Exception as e:
