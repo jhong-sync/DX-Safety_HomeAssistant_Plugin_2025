@@ -66,7 +66,25 @@ class Settings(BaseModel):
     geopolicy: GeoPolicy = Field(default_factory=GeoPolicy)
     observability: Observability = Field(default_factory=Observability)
     reliability: Reliability = Field(default_factory=Reliability)
-    tts: 'TTS' = Field(default_factory=lambda: TTS())
+    tts: TTS = Field(default_factory=TTS)
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        # 하위 객체들이 제대로 초기화되었는지 확인
+        if not isinstance(self.remote_mqtt, RemoteMQTT):
+            self.remote_mqtt = RemoteMQTT()
+        if not isinstance(self.local_mqtt, LocalMQTT):
+            self.local_mqtt = LocalMQTT()
+        if not isinstance(self.ha, HAConfig):
+            self.ha = HAConfig()
+        if not isinstance(self.geopolicy, GeoPolicy):
+            self.geopolicy = GeoPolicy()
+        if not isinstance(self.observability, Observability):
+            self.observability = Observability()
+        if not isinstance(self.reliability, Reliability):
+            self.reliability = Reliability()
+        if not isinstance(self.tts, TTS):
+            self.tts = TTS()
 
 class TTS(BaseModel):
     enabled: bool = False
