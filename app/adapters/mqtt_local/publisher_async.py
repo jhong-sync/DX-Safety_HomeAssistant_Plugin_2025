@@ -118,16 +118,17 @@ class LocalMqttPublisher:
             if self.tls:
                 connect_kwargs["tls"] = True
             
-            # LWT 설정
-            connect_kwargs["will"] = {
-                "topic": self.lwt_topic,
-                "payload": "offline",
-                "qos": 1,
-                "retain": True
-            }
-            
             log.info(f"MQTT 브로커 연결 시도: {self.broker_host}:{self.broker_port}")
             self.client = Client(**connect_kwargs)
+            
+            # LWT 설정 (aiomqtt에서는 연결 후 설정)
+            self.client.will_set(
+                topic=self.lwt_topic,
+                payload="offline",
+                qos=1,
+                retain=True
+            )
+            
             await self.client.connect()
             
             # 온라인 상태 발송
