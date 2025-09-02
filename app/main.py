@@ -75,7 +75,7 @@ async def start_http(settings: Settings) -> Optional[asyncio.Task]:
 async def main():
     # 로거 초기화 (환경변수 LOG_LEVEL 우선, 없으면 설정 사용)
     initial_level = os.getenv("LOG_LEVEL", "INFO")
-    setup_logging_dev(level=initial_level)
+    setup_logging_dev()
     log = get_logger()
     
     s = build_settings()
