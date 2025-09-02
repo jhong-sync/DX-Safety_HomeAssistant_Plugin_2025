@@ -7,6 +7,9 @@ into internal domain models.
 
 from typing import Any, Dict
 from .models import CAE, Area, Geometry, Severity
+from app.observability.logging_setup import get_logger
+
+log = get_logger("dxsafety.normalize")
 
 def to_cae(raw: Dict[str, Any]) -> CAE:
     """
@@ -68,8 +71,27 @@ def to_cae(raw: Dict[str, Any]) -> CAE:
     if isinstance(parameters, dict):
         # parameters에서 위치 정보 추출
         location_info = parameters.get("Location.en") or parameters.get("Location.zh") or parameters.get("Location.ja")
-        if location_info and not areas:
-            # 간단한 Point 지오메트리 생성
+        
+        # STALatitude, STALongitude 값 추출
+        sta_lat = parameters.get("STALatitude")
+        sta_lon = parameters.get("STALongitude")
+        
+        if sta_lat is not None and sta_lon is not None:
+            try:
+                # 좌표를 float로 변환
+                lat = float(sta_lat)
+                lon = float(sta_lon)
+                # Point 지오메트리 생성 (경도, 위도 순서)
+                geometry = Geometry(type="Point", coordinates=[lon, lat])
+                area_name = location_info if location_info else f"Alert Area ({lat}, {lon})"
+                area = Area(name=area_name, geometry=geometry)
+                areas.append(area)
+                log.info(f"CAP 좌표 추출됨: lat={lat}, lon={lon}, area_name={area_name}")
+            except (ValueError, TypeError) as e:
+                # 좌표 변환 실패 시 로그 기록
+                log.error(f"좌표 변환 실패: STALatitude={sta_lat}, STALongitude={sta_lon}, error={e}")
+        elif location_info and not areas:
+            # 기존 로직: 위치 정보만 있고 좌표가 없는 경우
             geometry = Geometry(type="Point", coordinates=[0, 0])  # 기본값
             area = Area(name=location_info, geometry=geometry)
             areas.append(area)
