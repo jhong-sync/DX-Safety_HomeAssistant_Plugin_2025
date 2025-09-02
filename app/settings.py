@@ -60,6 +60,12 @@ class TTS(BaseModel):
     template: str = "{headline} - {description}"
     voice_language: str = "ko-KR"
 
+class ShelterNav(BaseModel):
+    enabled: bool = True
+    file_path: str = "/share/shelter2025.xlsx"
+    appname: str = "com.synctechno.dxsafety"
+    notify_group: str = ""
+
 class Settings(BaseModel):
     # 상위 플래그(옵션)
     dry_run: bool = False
@@ -73,6 +79,7 @@ class Settings(BaseModel):
     observability: Observability = Field(default_factory=Observability)
     reliability: Reliability = Field(default_factory=Reliability)
     tts: TTS = Field(default_factory=TTS)
+    shelter_nav: ShelterNav = Field(default_factory=ShelterNav)
     
     def __init__(self, **data):
         super().__init__(**data)
@@ -91,3 +98,5 @@ class Settings(BaseModel):
             self.reliability = Reliability()
         if not isinstance(self.tts, TTS):
             self.tts = TTS()
+        if not isinstance(self.shelter_nav, ShelterNav):
+            self.shelter_nav = ShelterNav()

@@ -200,3 +200,57 @@ class HAClient:
         except Exception as e:
             log.error(f"Home Assistant 설정 가져오기 실패 error:{str(e)}")
             return None
+
+    async def list_notify_mobile_services(self) -> list[str]:
+        """모바일 앱 notify 서비스 목록을 가져옵니다."""
+        try:
+            svcs = await self._make_request("GET", "/api/services")
+            mobile_services = []
+            for service in svcs:
+                if service.get("domain") == "notify":
+                    for name in service.get("services", {}).keys():
+                        if name.startswith("mobile_app_"):
+                            mobile_services.append(name)
+            log.info(f"모바일 notify 서비스 목록 가져옴 count:{len(mobile_services)}")
+            return mobile_services
+        except Exception as e:
+            log.error(f"모바일 notify 서비스 목록 가져오기 실패 error:{str(e)}")
+            return []
+
+    async def get_device_trackers(self) -> list[dict]:
+        """위치 추적 가능한 디바이스 목록을 가져옵니다."""
+        try:
+            states = await self._make_request("GET", "/api/states")
+            devices = []
+            for st in states:
+                if st.get("entity_id", "").startswith("device_tracker."):
+                    attrs = st.get("attributes", {})
+                    if "latitude" in attrs and "longitude" in attrs:
+                        devices.append({
+                            "entity_id": st["entity_id"],
+                            "name": attrs.get("friendly_name", st["entity_id"]),
+                            "lat": float(attrs["latitude"]),
+                            "lon": float(attrs["longitude"]),
+                        })
+            log.info(f"위치 추적 디바이스 목록 가져옴 count:{len(devices)}")
+            return devices
+        except Exception as e:
+            log.error(f"위치 추적 디바이스 목록 가져오기 실패 error:{str(e)}")
+            return []
+
+    async def notify(self, service: str, title: str, message: str, url: str):
+        """모바일 앱에 푸시 알림을 발송합니다."""
+        try:
+            payload = {
+                "title": title,
+                "message": message,
+                "data": {"url": url, "clickAction": url},
+            }
+            result = await self._make_request(
+                "POST", f"/api/services/notify/{service}", json=payload
+            )
+            log.info(f"푸시 알림 발송 성공 service:{service} title:{title}")
+            return result
+        except Exception as e:
+            log.error(f"푸시 알림 발송 실패 service:{service} error:{str(e)}")
+            raise

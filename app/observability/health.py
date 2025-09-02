@@ -5,12 +5,14 @@ This module implements health, readiness, metrics, and info endpoints
 for monitoring and operational visibility.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.responses import Response, JSONResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 import time
 from app.settings import Settings
 from app.observability.logging_setup import get_logger
+from app.adapters.homeassistant.client import HAClient
+from app.features.shelter_nav import ShelterNavigator
 
 log = get_logger()
 
@@ -71,6 +73,26 @@ def create_app(settings: Settings) -> FastAPI:
             "log_level": settings.observability.log_level
         })
     
+    @app.post("/shelter/notify")
+    async def shelter_notify(payload: dict = Body(default={})):
+        """가까운 대피소 알림을 발송합니다."""
+        if not settings.shelter_nav.enabled:
+            raise HTTPException(status_code=400, detail="shelter_nav disabled")
+        
+        try:
+            ha = HAClient(settings.ha.base_url, settings.ha.token, settings.ha.timeout_sec)
+            nav = ShelterNavigator(ha, settings.shelter_nav.file_path, settings.shelter_nav.appname)
+            
+            notify_group = payload.get("notify_group") or settings.shelter_nav.notify_group or None
+            await nav.notify_all_devices(notify_group)
+            
+            log.info(f"대피소 알림 요청 처리 완료 notify_group:{notify_group}")
+            return {"ok": True, "message": "대피소 알림 발송 완료"}
+            
+        except Exception as e:
+            log.error(f"대피소 알림 요청 처리 실패 error:{str(e)}")
+            raise HTTPException(status_code=500, detail=f"Notification failed: {str(e)}")
+    
     @app.get("/")
     async def root():
         """루트 엔드포인트"""
@@ -81,7 +103,8 @@ def create_app(settings: Settings) -> FastAPI:
                 "health": "/health",
                 "ready": "/ready", 
                 "metrics": "/metrics",
-                "info": "/info"
+                "info": "/info",
+                "shelter_notify": "/shelter/notify"
             }
         })
     

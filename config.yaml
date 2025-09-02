@@ -1,5 +1,5 @@
 name: DX-Safety CAP 처리기
-version: "0.4.0"
+version: "0.4.1"
 slug: dx_safety
 description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
 arch: [amd64, aarch64]
@@ -58,7 +58,7 @@ options:
     password: ""
   homeassistant_api:
     token: ""                      # 일반적으로 비움: SUPERVISOR_TOKEN 자동 주입
-    url: "http://supervisor/core/api"
+    url: "http://supervisor/core"
     timeout: 30
   policy:
     default_location: "zone.home"  # 현재는 zone.home 우선, 실패 시 lat/lon 폴백
@@ -83,6 +83,11 @@ options:
     max_delay: 120.0
     backoff_factor: 2.0
     jitter: true
+  shelter_nav:
+    enabled: true
+    file_path: "/share/shelter2025.xlsx"
+    appname: "com.synctechno.dxsafety"
+    notify_group: ""
 
 schema:
   remote_mqtt:
