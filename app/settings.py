@@ -54,6 +54,12 @@ class Reliability(BaseModel):
     queue_maxsize: int = 1000
     drop_on_full: bool = False
 
+class TTS(BaseModel):
+    enabled: bool = False
+    topic: str = "dxsafety/tts"
+    template: str = "{headline} - {description}"
+    voice_language: str = "ko-KR"
+
 class Settings(BaseModel):
     # 상위 플래그(옵션)
     dry_run: bool = False
@@ -85,9 +91,3 @@ class Settings(BaseModel):
             self.reliability = Reliability()
         if not isinstance(self.tts, TTS):
             self.tts = TTS()
-
-class TTS(BaseModel):
-    enabled: bool = False
-    topic: str = "dxsafety/tts"
-    template: str = "{headline} - {description}"
-    voice_language: str = "ko-KR"
