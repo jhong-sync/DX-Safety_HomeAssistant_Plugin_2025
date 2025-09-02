@@ -11,7 +11,7 @@ from typing import Optional
 from aiomqtt import Client, MqttError
 from app.adapters.storage.sqlite_outbox import SQLiteOutbox
 from app.common.retry import exponential_backoff
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 
 log = get_logger("dxsafety.mqtt_local")
 

@@ -20,7 +20,7 @@ from app.adapters.homeassistant.client import HAClient
 from app.adapters.tts.engine import TTSEngine
 from app.ports.ingest import AlertIngestPort
 from app.observability import metrics
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 
 log = get_logger("dxsafety.orchestrator")
 

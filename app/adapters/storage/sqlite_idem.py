@@ -8,7 +8,7 @@ for deduplication of alert messages.
 import aiosqlite
 import time
 from typing import Optional
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 
 log = get_logger("dxsafety.idem")
 

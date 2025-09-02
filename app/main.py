@@ -5,7 +5,7 @@ import uvicorn
 from app.adapters.tts.engine import TTSEngine
 from app.settings import Settings
 from app.observability.health import create_app
-from app.observability.logger import setup_logger, get_logger
+from app.observability.logging_setup import setup_logging_dev, get_logger
 from app.adapters.mqtt_remote.client_async import RemoteMqttIngestor
 from app.adapters.mqtt_local.publisher_async import LocalMqttPublisher
 from app.adapters.storage.sqlite_outbox import SQLiteOutbox
@@ -75,7 +75,7 @@ async def start_http(settings: Settings) -> Optional[asyncio.Task]:
 async def main():
     # 로거 초기화 (환경변수 LOG_LEVEL 우선, 없으면 설정 사용)
     initial_level = os.getenv("LOG_LEVEL", "INFO")
-    setup_logger(level=initial_level)
+    setup_logging_dev(level=initial_level)
     log = get_logger()
     
     s = build_settings()

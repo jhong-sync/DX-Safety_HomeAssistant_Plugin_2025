@@ -7,7 +7,7 @@ alert messages to speech and playing them through Home Assistant.
 
 import asyncio
 from typing import Dict, Optional, List
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 from app.adapters.homeassistant.client import HAClient
 from app.common.retry import retry_with_backoff
 

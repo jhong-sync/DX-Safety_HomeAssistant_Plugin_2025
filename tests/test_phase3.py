@@ -12,7 +12,7 @@ import time
 import json
 from fastapi.testclient import TestClient
 from app.observability.health import create_app
-from app.observability.logger import setup_logger, get_logger
+from app.observability.logging_setup import setup_logging_dev, get_logger
 from app.observability.metrics import alerts_received, alerts_valid, queue_depth
 from app.settings import Settings
 
@@ -117,7 +117,7 @@ def test_structured_logging():
     
     try:
         # 로거 설정
-        logger = setup_logger("test_logger", "INFO")
+        logger = setup_logging_dev("test_logger", "INFO")
         
         # 로그 메시지 기록
         logger.info("테스트 메시지", extra={"test_field": "test_value"})

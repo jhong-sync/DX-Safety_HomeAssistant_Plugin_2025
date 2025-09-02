@@ -7,7 +7,7 @@ alert information into natural language for TTS.
 
 from typing import Dict, Optional, List
 from app.core.models import CAE, Decision
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 
 log = get_logger()
 

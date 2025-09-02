@@ -9,7 +9,7 @@ import uvicorn
 import asyncio
 from app.observability.health import create_app
 from app.settings import Settings
-from app.observability.logger import setup_logger, get_logger
+from app.observability.logging_setup import setup_logging_dev, get_logger
 
 def run_http_server(settings: Settings, host: str = "0.0.0.0", port: int = None):
     """
@@ -21,7 +21,7 @@ def run_http_server(settings: Settings, host: str = "0.0.0.0", port: int = None)
         port: 바인딩할 포트 (None이면 설정에서 가져옴)
     """
     # 로거 설정
-    setup_logger(level=settings.observability.log_level)
+    setup_logging_dev(level=settings.observability.log_level)
     log = get_logger()
     
     # 포트 설정

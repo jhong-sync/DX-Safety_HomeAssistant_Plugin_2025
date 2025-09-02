@@ -10,7 +10,7 @@ import json
 import time
 from dataclasses import dataclass
 from typing import Optional, List
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 
 log = get_logger("dxsafety.outbox")
 

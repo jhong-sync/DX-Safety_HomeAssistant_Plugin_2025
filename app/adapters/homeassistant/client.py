@@ -8,7 +8,7 @@ to retrieve zone information, device states, and other HA data.
 import aiohttp
 import asyncio
 from typing import Dict, List, Optional, Tuple
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 from app.common.retry import retry_with_backoff
 
 log = get_logger("dxsafety.ha")

@@ -10,7 +10,7 @@ from fastapi.responses import Response, JSONResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 import time
 from app.settings import Settings
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 
 log = get_logger()
 

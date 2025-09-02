@@ -5,7 +5,7 @@ shapely==2.0.4
 aiohttp==3.10.5
 httpx>=0.28.1
 pydantic==2.8.2
-structlog>=23.0.0
+loguru>=0.7.0
 prometheus-client>=0.17.0
 python-dateutil>=2.9.0.post0
 aiosqlite>=0.21.0

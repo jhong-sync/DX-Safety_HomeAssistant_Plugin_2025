@@ -8,7 +8,7 @@ coordinate transformations.
 
 import math
 from typing import List, Tuple, Optional
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 
 log = get_logger()
 

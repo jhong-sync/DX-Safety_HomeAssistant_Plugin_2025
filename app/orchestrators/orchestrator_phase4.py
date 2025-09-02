@@ -18,7 +18,7 @@ from app.adapters.mqtt_local.publisher_async import LocalMqttPublisher
 from app.adapters.homeassistant.client import HAClient
 from app.ports.ingest import AlertIngestPort
 from app.observability import metrics
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 
 log = get_logger()
 

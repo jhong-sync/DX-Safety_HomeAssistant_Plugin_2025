@@ -11,7 +11,7 @@ import asyncio
 import time
 from pathlib import Path
 from app.adapters.storage.sqlite_idem import SQLiteIdemStore
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 
 log = get_logger()
 

@@ -13,7 +13,7 @@ from app.common.geo import (
     is_point_near_polygon,
     validate_coordinates
 )
-from app.observability.logger import get_logger
+from app.observability.logging_setup import get_logger
 
 log = get_logger()
 
