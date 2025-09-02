@@ -1,5 +1,6 @@
 # app/settings.py
 from __future__ import annotations
+import os
 from pydantic import BaseModel, Field
 
 class MqttCommon(BaseModel):
@@ -62,7 +63,7 @@ class TTS(BaseModel):
 
 class ShelterNav(BaseModel):
     enabled: bool = True
-    file_path: str = "./share/shelter2025.xlsx"
+    file_path: str = os.path.join(os.getcwd(), "share", "shelter2025.xlsx")
     appname: str = "com.synctechno.dxsafety"
     notify_group: str = ""
 
