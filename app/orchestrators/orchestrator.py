@@ -207,7 +207,8 @@ class Orchestrator:
                     # 음성 알림 (비동기로 실행)
                     if self.voice_enabled:
                         asyncio.create_task(self._send_voice_alert(cae, dec))
-                    
+                    print(cae)
+                    print(dec)
                     log.info("경보 발송됨", 
                             event_id=cae.event_id,
                             severity=cae.severity,
