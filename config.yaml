@@ -1,5 +1,5 @@
 name: DX-Safety CAP 처리기
-version: "0.4.3"
+version: "0.4.4"
 slug: dx_safety
 description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
 arch: [amd64, aarch64]
@@ -85,7 +85,7 @@ options:
     jitter: true
   shelter_nav:
     enabled: true
-    file_path: "/share/shelter2025.xlsx"
+    file_path: "./share/shelter2025.xlsx"
     appname: "com.synctechno.dxsafety"
     notify_group: ""
 
