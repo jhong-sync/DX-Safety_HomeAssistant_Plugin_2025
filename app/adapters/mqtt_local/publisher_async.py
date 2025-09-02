@@ -135,6 +135,7 @@ class LocalMqttPublisher:
     async def _process_outbox(self) -> None:
         """Outbox의 메시지를 처리합니다."""
         item = await self.outbox.peek_oldest()
+        log.info(f"Outbox 처리: {item}")
         if not item:
             return
         
