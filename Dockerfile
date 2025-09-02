@@ -18,7 +18,7 @@ RUN /opt/venv/bin/pip install --no-cache-dir -r /tmp/requirements.txt
 # 앱 파일
 WORKDIR /opt/app
 COPY app /opt/app/app
-COPY shelter2025.xlsx /opt/app/share/shelter2025.xlsx
+COPY share /opt/app/share
 COPY run.sh /opt/app/run.sh
 RUN chmod +x /opt/app/run.sh
 
