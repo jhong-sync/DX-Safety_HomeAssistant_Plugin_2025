@@ -18,21 +18,32 @@ def to_cae(raw: Dict[str, Any]) -> CAE:
     Returns:
         정규화된 CAE 모델
     """
-    # 이벤트 ID 추출
-    event_id = str(raw.get("id") or raw.get("eventId") or "")
+    # 이벤트 ID 추출 (identifier 필드도 확인)
+    event_id = str(raw.get("id") or raw.get("eventId") or raw.get("identifier") or "")
     
-    # 전송 시간 추출
-    sent_at = str(raw.get("sentAt") or raw.get("sent_at") or "")
+    # 전송 시간 추출 (sent 필드도 확인)
+    sent_at = str(raw.get("sentAt") or raw.get("sent_at") or raw.get("sent") or "")
     
-    # 심각도 매핑
+    # 심각도 매핑 (숫자와 문자열 모두 처리)
     severity_map = {
         "minor": "minor",
         "moderate": "moderate", 
         "severe": "severe",
-        "critical": "critical"
+        "critical": "critical",
+        # 숫자 심각도 매핑
+        1: "minor",
+        2: "minor", 
+        3: "moderate",
+        4: "severe",
+        5: "critical"
     }
     raw_severity = raw.get("severity", "moderate")
-    severity = severity_map.get(raw_severity.lower(), "moderate")
+    
+    # 숫자인 경우 직접 매핑, 문자열인 경우 소문자 변환 후 매핑
+    if isinstance(raw_severity, int):
+        severity = severity_map.get(raw_severity, "moderate")
+    else:
+        severity = severity_map.get(str(raw_severity).lower(), "moderate")
     
     # 영역 정보 추출
     areas = []
@@ -51,6 +62,17 @@ def to_cae(raw: Dict[str, Any]) -> CAE:
                             geometry=geometry
                         )
                         areas.append(area)
+    
+    # parameters 필드에서 추가 정보 추출 시도
+    parameters = raw.get("parameters", {})
+    if isinstance(parameters, dict):
+        # parameters에서 위치 정보 추출
+        location_info = parameters.get("Location.en") or parameters.get("Location.zh") or parameters.get("Location.ja")
+        if location_info and not areas:
+            # 간단한 Point 지오메트리 생성
+            geometry = Geometry(type="Point", coordinates=[0, 0])  # 기본값
+            area = Area(name=location_info, geometry=geometry)
+            areas.append(area)
     
     return CAE(
         event_id=event_id,
