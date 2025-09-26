@@ -1,142 +1,144 @@
 #!/usr/bin/env python3
 """
-DX-Safety 통합 테스트 실행 스크립트
+DX-Safety 테스트 실행 스크립트
 
-이 스크립트는 프로젝트의 모든 테스트를 실행하고 결과를 요약합니다.
+이 스크립트는 다양한 테스트 시나리오를 실행합니다.
 """
 
-import subprocess
-import sys
 import os
+import sys
+import subprocess
+import argparse
 from pathlib import Path
 
-def run_tests():
-    """모든 테스트 실행"""
-    print("🧪 DX-Safety 통합 테스트 시작")
-    print("=" * 50)
-    
-    # 프로젝트 루트로 이동
-    project_root = Path(__file__).parent
-    os.chdir(project_root)
-    
-    # 테스트 실행 명령어들
-    test_commands = [
-        # 기본 단위 테스트들
-        ["python", "-m", "pytest", "tests/test_phase1.py", "-v"],
-        ["python", "-m", "pytest", "tests/test_phase2.py", "-v"],
-        ["python", "-m", "pytest", "tests/test_phase3.py", "-v"],
-        ["python", "-m", "pytest", "tests/test_phase4.py", "-v"],
-        ["python", "-m", "pytest", "tests/test_phase5.py", "-v"],
-        
-        # 통합 테스트
-        ["python", "-m", "pytest", "tests/test_comprehensive.py", "-v"],
-        
-        # 특수 테스트들
-        ["python", "-m", "pytest", "tests/test_idem_sqlite.py", "-v"],
-        ["python", "-m", "pytest", "tests/test_phase1_integration.py", "-v"],
-    ]
-    
-    results = []
-    
-    for i, cmd in enumerate(test_commands, 1):
-        print(f"\n📋 테스트 {i}/{len(test_commands)}: {' '.join(cmd[2:])}")
-        print("-" * 40)
-        
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            results.append({
-                'command': cmd,
-                'returncode': result.returncode,
-                'stdout': result.stdout,
-                'stderr': result.stderr
-            })
-            
-            if result.returncode == 0:
-                print("✅ 성공")
-                # 마지막 몇 줄만 출력
-                lines = result.stdout.strip().split('\n')
-                for line in lines[-3:]:
-                    if line.strip():
-                        print(f"   {line}")
-            else:
-                print("❌ 실패")
-                if result.stderr:
-                    print(f"   오류: {result.stderr.strip()}")
-                    
-        except subprocess.TimeoutExpired:
-            print("⏰ 시간 초과")
-            results.append({
-                'command': cmd,
-                'returncode': -1,
-                'stdout': '',
-                'stderr': 'Timeout'
-            })
-        except Exception as e:
-            print(f"💥 예외 발생: {e}")
-            results.append({
-                'command': cmd,
-                'returncode': -1,
-                'stdout': '',
-                'stderr': str(e)
-            })
-    
-    # 결과 요약
-    print("\n" + "=" * 50)
-    print("📊 테스트 결과 요약")
-    print("=" * 50)
-    
-    passed = sum(1 for r in results if r['returncode'] == 0)
-    failed = len(results) - passed
-    
-    print(f"✅ 성공: {passed}")
-    print(f"❌ 실패: {failed}")
-    print(f"📈 성공률: {passed/len(results)*100:.1f}%")
-    
-    if failed > 0:
-        print("\n🔍 실패한 테스트:")
-        for i, result in enumerate(results):
-            if result['returncode'] != 0:
-                test_name = ' '.join(result['command'][2:])
-                print(f"   - {test_name}")
-    
-    return passed == len(results)
 
-def run_specific_test(test_file):
-    """특정 테스트 파일 실행"""
-    print(f"🎯 특정 테스트 실행: {test_file}")
-    print("=" * 50)
+def run_command(cmd, description):
+    """명령어 실행"""
+    print(f"\n{'='*60}")
+    print(f"실행 중: {description}")
+    print(f"명령어: {cmd}")
+    print(f"{'='*60}")
     
-    project_root = Path(__file__).parent
-    os.chdir(project_root)
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     
-    cmd = ["python", "-m", "pytest", f"tests/{test_file}", "-v"]
-    
-    try:
-        result = subprocess.run(cmd, timeout=60)
-        return result.returncode == 0
-    except subprocess.TimeoutExpired:
-        print("⏰ 시간 초과")
+    if result.returncode == 0:
+        print("성공")
+        if result.stdout:
+            print(result.stdout)
+    else:
+        print("실패")
+        if result.stderr:
+            print(result.stderr)
         return False
-    except Exception as e:
-        print(f"💥 예외 발생: {e}")
-        return False
+    
+    return True
+
 
 def main():
     """메인 함수"""
-    if len(sys.argv) > 1:
-        # 특정 테스트 실행
-        test_file = sys.argv[1]
-        success = run_specific_test(test_file)
-    else:
-        # 모든 테스트 실행
-        success = run_tests()
+    parser = argparse.ArgumentParser(description="DX-Safety 테스트 실행")
+    parser.add_argument(
+        "--type", 
+        choices=["unit", "integration", "all", "core", "orchestrators", "adapters", "ports", "observability", "features", "common"],
+        default="all",
+        help="실행할 테스트 유형"
+    )
+    parser.add_argument(
+        "--coverage", 
+        action="store_true",
+        help="코드 커버리지 포함"
+    )
+    parser.add_argument(
+        "--verbose", 
+        action="store_true",
+        help="상세 출력"
+    )
+    parser.add_argument(
+        "--parallel", 
+        action="store_true",
+        help="병렬 실행"
+    )
     
+    args = parser.parse_args()
+    
+    # 프로젝트 루트 디렉토리로 이동
+    project_root = Path(__file__).parent
+    os.chdir(project_root)
+    
+    # 기본 pytest 옵션
+    pytest_opts = []
+    
+    if args.verbose:
+        pytest_opts.append("-v")
+    
+    if args.coverage:
+        pytest_opts.extend(["--cov=app", "--cov-report=html", "--cov-report=term"])
+    
+    if args.parallel:
+        pytest_opts.extend(["-n", "auto"])
+    
+    # 테스트 타입별 실행
+    success = True
+    
+    if args.type == "all":
+        # 전체 테스트 실행
+        cmd = f"python -m pytest {' '.join(pytest_opts)} tests/"
+        success &= run_command(cmd, "전체 테스트 실행")
+        
+    elif args.type == "unit":
+        # 단위 테스트만 실행
+        cmd = f"python -m pytest {' '.join(pytest_opts)} tests/unit/"
+        success &= run_command(cmd, "단위 테스트 실행")
+        
+    elif args.type == "integration":
+        # 통합 테스트만 실행
+        cmd = f"python -m pytest {' '.join(pytest_opts)} -m integration tests/"
+        success &= run_command(cmd, "통합 테스트 실행")
+        
+    elif args.type == "core":
+        # Core 모듈 테스트
+        cmd = f"python -m pytest {' '.join(pytest_opts)} tests/unit/core/"
+        success &= run_command(cmd, "Core 모듈 테스트 실행")
+        
+    elif args.type == "orchestrators":
+        # Orchestrators 모듈 테스트
+        cmd = f"python -m pytest {' '.join(pytest_opts)} tests/unit/orchestrators/"
+        success &= run_command(cmd, "Orchestrators 모듈 테스트 실행")
+        
+    elif args.type == "adapters":
+        # Adapters 모듈 테스트
+        cmd = f"python -m pytest {' '.join(pytest_opts)} tests/unit/adapters/"
+        success &= run_command(cmd, "Adapters 모듈 테스트 실행")
+        
+    elif args.type == "ports":
+        # Ports 모듈 테스트
+        cmd = f"python -m pytest {' '.join(pytest_opts)} tests/unit/ports/"
+        success &= run_command(cmd, "Ports 모듈 테스트 실행")
+        
+    elif args.type == "observability":
+        # Observability 모듈 테스트
+        cmd = f"python -m pytest {' '.join(pytest_opts)} tests/unit/observability/"
+        success &= run_command(cmd, "Observability 모듈 테스트 실행")
+        
+    elif args.type == "features":
+        # Features 모듈 테스트
+        cmd = f"python -m pytest {' '.join(pytest_opts)} tests/unit/features/"
+        success &= run_command(cmd, "Features 모듈 테스트 실행")
+        
+    elif args.type == "common":
+        # Common 모듈 테스트
+        cmd = f"python -m pytest {' '.join(pytest_opts)} tests/unit/common/"
+        success &= run_command(cmd, "Common 모듈 테스트 실행")
+    
+    # 결과 출력
+    print(f"\n{'='*60}")
     if success:
-        print("\n🎉 모든 테스트가 성공했습니다!")
-        sys.exit(0)
+        print("모든 테스트가 성공적으로 완료되었습니다!")
     else:
-        print("\n💔 일부 테스트가 실패했습니다.")
+        print("일부 테스트가 실패했습니다.")
         sys.exit(1)
+    print(f"{'='*60}")
+
 
 if __name__ == "__main__":
     main()
