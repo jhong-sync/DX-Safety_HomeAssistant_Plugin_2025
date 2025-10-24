@@ -165,7 +165,7 @@ class Orchestrator:
                 # 전체 처리 시간 측정 시작
                 t0 = time.perf_counter()
                 
-                # 정규화 (시간 측정)
+                # 받은 데이터 정규화
                 with metrics.normalize_seconds.time():
                     cae: CAE = normalize.to_cae(raw)
                 

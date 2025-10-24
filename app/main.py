@@ -157,7 +157,7 @@ async def main():
         severity_threshold=s.geopolicy.severity_threshold, 
         distance_threshold_km=s.geopolicy.distance_km_threshold, 
         polygon_buffer_km=s.geopolicy.polygon_buffer_km, 
-        policy_mode=s.geopolicy.mode, 
+        policy_mode=s.geopolicy.mode,
         voice_enabled=s.tts.enabled, 
         voice_language=s.tts.voice_language, 
         queue_maxsize=s.reliability.queue_maxsize,

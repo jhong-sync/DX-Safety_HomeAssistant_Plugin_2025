@@ -1,5 +1,5 @@
 name: DX-Safety CAP 처리기
-version: "0.4.12"
+version: "0.4.13"
 slug: dx_safety
 description: "CAP 기반 재난 경보 수신/정규화/정책결정/디스패치 애드온"
 arch: [amd64, aarch64]
@@ -61,6 +61,7 @@ options:
     url: "http://supervisor/core"
     timeout: 30
   policy:
+    mode: "AND"                     # AND: 심각도+지리 모두 만족 | OR: 둘 중 하나만 만족
     default_location: "zone.home"  # 현재는 zone.home 우선, 실패 시 lat/lon 폴백
     lat: 36.123
     lon: 127.234
